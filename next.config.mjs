@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  basePath: '/chain-explorer',
+  assetPrefix: '/chain-explorer',
   typescript: {
     ignoreBuildErrors: true,
   },
