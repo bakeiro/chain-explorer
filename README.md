@@ -3,7 +3,7 @@
 <p align="center">
 
   <a href="https://github.com/bakeiro/chain-explorer/">
-    <img src="https://raw.githubusercontent.com/bakeiro/chain-explorer/refs/heads/main/public/chainExplorer.jpg" alt="logo" width=300 height=83>
+    <img src="https://raw.githubusercontent.com/bakeiro/chain-explorer/refs/heads/main/public/chainExplorer.jpg" alt="logo" width=800 height=400>
   </a>
   <p align="center">
     Fast & easy blockchain explorer.
