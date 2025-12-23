@@ -37,7 +37,6 @@ export default function AddressesPage() {
 
           <form onSubmit={handleSearch}>
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
@@ -48,48 +47,48 @@ export default function AddressesPage() {
             </div>
           </form>
 
-          <div className="space-y-4">            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="card border-primary/10 hover:border-primary/30 transition-colors">
-                <div className="card-header">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="card-title text-lg">Wallet Addresses</h3>
-                      <p className="card-description text-sm">View balance and transaction history</p>
-                    </div>
+        </div>
+        <div className="space-y-4">            
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="card border-primary/10 hover:border-primary/30 transition-colors">
+              <div className="card-header">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-primary" />
                   </div>
-                </div>
-                <div className="card-content">
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Check ETH balance</li>
-                    <li>• View transaction history</li>
-                    <li>• See sent and received transactions</li>
-                  </ul>
+                  <div>
+                    <h3 className="card-title text-lg">Wallet Addresses</h3>
+                    <p className="card-description text-sm">View balance and transaction history</p>
+                  </div>
                 </div>
               </div>
+              <div className="card-content">
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Check ETH balance</li>
+                  <li>• View transaction history</li>
+                  <li>• See sent and received transactions</li>
+                </ul>
+              </div>
+            </div>
 
-              <div className="card border-primary/10 hover:border-primary/30 transition-colors">
-                <div className="card-header">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <FileCode className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="card-title text-lg">Smart Contracts</h3>
-                      <p className="card-description text-sm">Explore contract details and code</p>
-                    </div>
+            <div className="card border-primary/10 hover:border-primary/30 transition-colors">
+              <div className="card-header">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <FileCode className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="card-title text-lg">Smart Contracts</h3>
+                    <p className="card-description text-sm">Explore contract details and code</p>
                   </div>
                 </div>
-                <div className="card-content">
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• View contract code</li>
-                    <li>• Check contract balance</li>
-                    <li>• See contract interactions</li>
-                  </ul>
-                </div>
+              </div>
+              <div className="card-content">
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• View contract code</li>
+                  <li>• Check contract balance</li>
+                  <li>• See contract interactions</li>
+                </ul>
               </div>
             </div>
           </div>
