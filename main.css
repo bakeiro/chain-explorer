@@ -5,8 +5,11 @@
 
 /* Definir colores OKLCH directamente en @theme para que Tailwind los reconozca */
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: "Segoe UI", "Roboto", "Oxygen", "Ubuntu";
+  --font-mono: "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu";
 
   /* Definir colores directamente con valores OKLCH para que funcionen */
   --color-background: oklch(0.17 0 0);

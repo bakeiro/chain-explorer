@@ -1,4 +1,4 @@
-"use client"
+ 
 
 import { useBlockchain, useRouter } from "../App"
 import { Blocks, Plug } from "lucide-react"
