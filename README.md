@@ -9,17 +9,12 @@
     Fast & easy blockchain explorer.
     <br>
     <a href="https://github.com/bakeiro/chain-explorer/"><strong>- Explore the page -</strong></a>
-
     <br><br>
-
     <a href="https://github.com/bakeiro/chain-explorer/blob/master/LICENSE.md"><img alt="GitHub" src="https://img.shields.io/github/license/bakeiro/chain-explorer"></a>
-
     <img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/bakeiro/chain-explorer">
-
     <a href="https://github.com/bakeiro/chain-explorer/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/bakeiro/chain-explorer"></a>
   </p>
 </p>
-
 <br>
 
 ### Fast, simple, and functional blockchain explorer
@@ -39,15 +34,16 @@ npm install
 1. Start local blockchain
 Any of these options (you can also use an online JSON-RPC)
 - `npx hardhat node`
-- `npx hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY`
 - `ganache-cli -p 8545`
 
 2. Start environment
 `npm run dev`
 
-3. Done! 🎊
+3. Set the JSON-RPC url
+
+4. Done! 🎊
 
 ### License
 
-Light-PHP is licensed under the Open Source MIT license, feel free to use it, modify it or contribute on it!</p>
+`chain-explorer` is licensed under the Open Source MIT license, feel free to use it, modify it or contribute on it!</p>
 Built by [David Baqueiro](https://davidbaqueiro.com)
