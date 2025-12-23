@@ -198,23 +198,6 @@
   @apply px-6 py-4 whitespace-nowrap;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  @apply w-2 h-2;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-primary/30 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary/50;
-}
-
 /* Selection */
 ::selection {
   @apply bg-primary/30 text-foreground;

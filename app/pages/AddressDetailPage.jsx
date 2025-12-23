@@ -72,15 +72,17 @@ export default function AddressDetailPage({ address }) {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-foreground">Address Details</h1>
             {addressData && (
-              <span className={`badge ${addressData.isContract ? "badge-default" : "badge-secondary"}`}>
+              <span
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg leading-5 text-sm font-medium ${addressData.isContract ? "bg-muted text-foreground border border-border" : "bg-secondary text-secondary-foreground"}`}
+              >
                 {addressData.isContract ? (
                   <>
-                    <FileCode className="w-3 h-3 mr-1" />
+                    <FileCode className="w-5 h-5" />
                     Contract
                   </>
                 ) : (
                   <>
-                    <Wallet className="w-3 h-3 mr-1" />
+                    <Wallet className="w-5 h-5" />
                     Wallet
                   </>
                 )}
