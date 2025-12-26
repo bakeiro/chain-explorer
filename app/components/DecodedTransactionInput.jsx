@@ -6,25 +6,15 @@ export default function DecodedTransactionInput({ inputData, abi }) {
     return null
   }
 
-  debugger;
   const selector = extractFunctionSelector(inputData)
   const matchingFunction = findMatchingFunction(abi, selector)
 
   if (!matchingFunction) {
     return (
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title flex items-center gap-2 text-base">
-            <FileCode className="w-4 h-4" />
-            Decoded Input
-          </h3>
-        </div>
-        <div className="card-content">
-          <p className="text-sm text-muted-foreground">
-            Function not found in ABI. The function selector is <code className="bg-muted px-1 py-0.5">{selector}</code>
-          </p>
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Function not found in ABI. The function selector is{" "}
+        <code className="bg-muted px-1 py-0.5 rounded">{selector}</code>
+      </p>
     )
   }
 
@@ -32,13 +22,7 @@ export default function DecodedTransactionInput({ inputData, abi }) {
 
   return (
     <div className="card">
-      <div className="card-header">
-        <h3 className="card-title flex items-center gap-2 text-base">
-          <FileCode className="w-4 h-4" />
-          Decoded Input
-        </h3>
-      </div>
-      <div className="card-content space-y-4">
+      <div className="card-content mt-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Function:</span>
           <code className="text-sm font-semibold">{matchingFunction.name}</code>

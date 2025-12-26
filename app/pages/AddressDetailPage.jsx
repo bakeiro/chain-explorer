@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { useBlockchain, useRouter } from "../App"
 import NavBar from "../components/NavBar"
@@ -7,7 +9,8 @@ import Tabs from "../components/Tabs"
 import ContractInteraction from "../components/ContractInteraction"
 import DecodedTransactionInput from "../components/DecodedTransactionInput"
 import { fetchAddressByAddress, fetchAddressTransactions } from "../lib/BlockchainApi"
-import { Copy, Wallet, FileCode } from "lucide-react"
+import { parseABI } from "../lib/AbiDecoder"
+import { Copy, Wallet, FileCode, Trash2 } from "lucide-react"
 
 export default function AddressDetailPage({ address }) {
   const [addressData, setAddressData] = useState(null)
@@ -16,7 +19,11 @@ export default function AddressDetailPage({ address }) {
   const [isLoadingTxs, setIsLoadingTxs] = useState(true)
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [parsedABI, setParsedABI] = useState(null)
-  const { rpcUrl, getContractABI } = useBlockchain()
+  const [showABIInput, setShowABIInput] = useState(false)
+  const [abiInput, setAbiInput] = useState("")
+  const [abiError, setAbiError] = useState("")
+  const [copiedField, setCopiedField] = useState(null)
+  const { rpcUrl, getContractABI, saveContractABI, removeContractABI } = useBlockchain()
   const { navigate } = useRouter()
 
   useEffect(() => {
@@ -56,10 +63,33 @@ export default function AddressDetailPage({ address }) {
     loadTransactions()
   }, [rpcUrl, address])
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text, field = null) => {
     navigator.clipboard.writeText(text)
-    setCopiedAddress(true)
-    setTimeout(() => setCopiedAddress(false), 2000)
+    if (field) {
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 500)
+    } else {
+      setCopiedAddress(true)
+      setTimeout(() => setCopiedAddress(false), 2000)
+    }
+  }
+
+  const handleParseABI = () => {
+    try {
+      setAbiError("")
+      const abi = parseABI(abiInput)
+      setParsedABI(abi)
+      saveContractABI(address, abi)
+      setShowABIInput(false)
+      setAbiInput("")
+    } catch (err) {
+      setAbiError(err instanceof Error ? err.message : "Failed to parse ABI")
+    }
+  }
+
+  const handleRemoveABI = () => {
+    removeContractABI(address)
+    setParsedABI(null)
   }
 
   const OverviewContent = () => (
@@ -113,15 +143,6 @@ export default function AddressDetailPage({ address }) {
                   <div className="text-2xl font-semibold text-foreground">{addressData.transactionCount}</div>
                 </div>
               </div>
-
-              {addressData.isContract && addressData.code && (
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Contract Code (Bytecode)</div>
-                  <div className="p-3 bg-muted rounded-lg max-h-40 overflow-auto">
-                    <code className="text-xs break-all">{addressData.code}</code>
-                  </div>
-                </div>
-              )}
             </>
           ) : (
             <div className="text-center py-8">
@@ -130,13 +151,6 @@ export default function AddressDetailPage({ address }) {
           )}
         </div>
       </div>
-
-      {addressData?.isContract && (
-        <ContractInteraction
-          contractAddress={address}
-          onABIParsed={(abi) => setParsedABI(abi.length > 0 ? abi : null)}
-        />
-      )}
     </div>
   )
 
@@ -170,29 +184,31 @@ export default function AddressDetailPage({ address }) {
                         <span className={`badge ${tx.type === "send" ? "badge-destructive" : "badge-default"}`}>
                           {tx.type === "send" ? "OUT" : "IN"}
                         </span>
-                        <code className="text-xs text-muted-foreground truncate">{tx.hash}</code>
+                        <code className="text-sm text-muted-foreground truncate">{tx.hash}</code>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <span className="text-muted-foreground">From: </span>
-                          <code className="text-xs">{tx.from.slice(0, 10)}...</code>
+                          <code className="text-sm">{tx.from.slice(0, 10)}...</code>
                         </div>
                         <div>
                           <span className="text-muted-foreground">To: </span>
-                          <code className="text-xs">{tx.to.slice(0, 10)}...</code>
+                          <code className="text-sm">{tx.to.slice(0, 10)}...</code>
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-lg font-semibold">{tx.amount}</div>
-                      <div className="text-xs text-muted-foreground">{tx.timeAgo}</div>
+                      <div className="text-sm text-muted-foreground">{tx.timeAgo}</div>
                     </div>
                   </div>
-                </div>
 
-                {parsedABI && tx.input && tx.input !== "0x" && (
-                  <DecodedTransactionInput inputData={tx.input} abi={parsedABI} />
-                )}
+                  {parsedABI && tx.input && tx.input !== "0x" && (
+                    <div className="mt-3 pt-3 border-t border-border-500" onClick={(e) => e.stopPropagation()}>
+                      <DecodedTransactionInput inputData={tx.input} abi={parsedABI} inline />
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -201,8 +217,45 @@ export default function AddressDetailPage({ address }) {
     </div>
   )
 
+  const CodeContent = () => (
+    <div className="space-y-6">
+      {/* ABI Management */}
+      <ContractInteraction
+        contractAddress={address}
+        onABIParsed={(abi) => setParsedABI(abi.length > 0 ? abi : null)}
+      />
+
+      {/* Bytecode */}
+      <div className="card p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Contract Bytecode</h3>
+            {addressData?.code && addressData.code !== "0x" && (
+              <button className="btn btn-ghost btn-sm" onClick={() => copyToClipboard(addressData.code, "bytecode")}>
+                <Copy
+                  className={`h-3 w-3 mr-2 ${copiedField === "bytecode" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+                />
+                Copy
+              </button>
+            )}
+          </div>
+          {addressData?.code && addressData.code !== "0x" ? (
+            <div className="bg-muted/50 rounded-md p-4 border border-border max-h-64 overflow-auto">
+              <code className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
+                {addressData.code}
+              </code>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">No bytecode available</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   const tabs = [
     { id: "overview", label: "Overview", content: <OverviewContent /> },
+    ...(addressData?.isContract ? [{ id: "code", label: "Code", content: <CodeContent /> }] : []),
     { id: "transactions", label: "Transactions", content: <TransactionsContent /> },
   ]
 

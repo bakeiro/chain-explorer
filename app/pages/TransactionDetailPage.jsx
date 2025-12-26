@@ -199,7 +199,15 @@ export default function TransactionDetailPage({ hash }) {
             <p className="text-muted-foreground text-sm">No input data for this transaction</p>
           )}
         </div>
+
+        <br />
+
+        {/* Decoded Input */}
+        {contractABI && transaction.input && transaction.input !== "0x" && (
+          <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
+        )}
       </div>
+
 
       {/* ABI Management */}
       {transaction.input && transaction.input !== "0x" && (
@@ -210,20 +218,16 @@ export default function TransactionDetailPage({ hash }) {
                 <h3 className="text-lg font-semibold">Contract ABI</h3>
                 <p className="text-sm text-muted-foreground">Add an ABI to decode the input data</p>
               </div>
-              {contractABI ? (
-                <button onClick={handleRemoveABI} className="btn btn-outline btn-sm text-destructive">
-                  <Trash2 className="w-3 h-3 mr-2" />
-                  Remove ABI
-                </button>
-              ) : (
-                <button onClick={() => setShowABIInput(!showABIInput)} className="btn btn-outline btn-sm">
-                  <FileCode className="w-3 h-3 mr-2" />
-                  {showABIInput ? "Cancel" : "Add ABI"}
-                </button>
+
+            {contractABI && (
+              <button onClick={handleRemoveABI} className="btn btn-outline btn-sm text-destructive">
+                <Trash2 className="w-3 h-3 mr-2" />
+                Remove ABI
+              </button>
               )}
             </div>
 
-            {showABIInput && !contractABI && (
+            {!contractABI && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <textarea
                   placeholder='[{"type":"function","name":"transfer","inputs":[...]}]'
@@ -245,11 +249,6 @@ export default function TransactionDetailPage({ hash }) {
             )}
           </div>
         </div>
-      )}
-
-      {/* Decoded Input */}
-      {contractABI && transaction.input && transaction.input !== "0x" && (
-        <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
       )}
     </div>
   )
