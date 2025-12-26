@@ -8,7 +8,7 @@
   <p align="center">
     Fast & easy blockchain explorer.
     <br>
-    <a href="https://github.com/bakeiro/chain-explorer/"><strong>- Explore the page -</strong></a>
+    <a href="https://bakeiro.github.io/chain-explorer/"><strong>- Explore the page -</strong></a>
     <br><br>
     <a href="https://github.com/bakeiro/chain-explorer/blob/master/LICENSE.md"><img alt="GitHub" src="https://img.shields.io/github/license/bakeiro/chain-explorer"></a>
     <img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/bakeiro/chain-explorer">
