@@ -1,11 +1,10 @@
- 
-
 import { useState, useEffect } from "react"
 import { useBlockchain, useRouter } from "../App"
 import NavBar from "../components/NavBar"
 import Footer from "../components/Footer"
 import Skeleton from "../components/Skeleton"
 import DecodedTransactionInput from "../components/DecodedTransactionInput"
+import TransactionLogs from "../components/TransactionsLogs"
 import { fetchTransactionById } from "../lib/BlockchainApi"
 import { parseABI } from "../lib/AbiDecoder"
 import { ArrowLeft, Copy, FileCode, Trash2 } from "lucide-react"
@@ -278,6 +277,10 @@ export default function TransactionDetailPage({ hash }) {
 
             {contractABI && transaction.input && transaction.input !== "0x" && (
               <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
+            )}
+
+            {transaction.logs && transaction.logs.length > 0 && (
+              <TransactionLogs logs={transaction.logs} abi={contractABI} />
             )}
           </div>
         ) : (

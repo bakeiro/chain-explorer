@@ -248,7 +248,17 @@ export async function fetchTransactionById(rpcUrl, hash) {
     const block = await client.getBlock(hexToDecimal(tx.blockNumber || "0x0"), false)
     const blockTimestamp = block ? hexToDecimal(block.timestamp) : Date.now() / 1000
 
-    return parseTransaction(tx, blockTimestamp)
+    const receipt = await client.getTransactionReceipt(hash)
+
+    const transaction = parseTransaction(tx, blockTimestamp)
+
+    // Añadir logs al objeto transaction
+    if (receipt && receipt.logs) {
+      transaction.logs = receipt.logs
+      transaction.logsCount = receipt.logs.length
+    }
+
+    return transaction
   } catch (error) {
     console.error("Error fetching transaction:", error)
     return null

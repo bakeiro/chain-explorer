@@ -6,6 +6,7 @@ export default function DecodedTransactionInput({ inputData, abi }) {
     return null
   }
 
+  debugger;
   const selector = extractFunctionSelector(inputData)
   const matchingFunction = findMatchingFunction(abi, selector)
 

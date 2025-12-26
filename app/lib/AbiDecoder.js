@@ -1,3 +1,5 @@
+import { ethers } from "ethers";
+
 export function parseABI(abiString) {
   try {
     const parsedABI = JSON.parse(abiString)
@@ -30,7 +32,7 @@ export function findMatchingFunction(abi, selector) {
     if (func.type !== "function") continue
 
     const signature = getFunctionSignature(func)
-    const funcSelector = keccak256(signature).slice(0, 10)
+    const funcSelector = getFunctionSelector(signature).slice(0, 10)
 
     if (funcSelector.toLowerCase() === selector.toLowerCase()) {
       return func
@@ -40,16 +42,8 @@ export function findMatchingFunction(abi, selector) {
   return null
 }
 
-function keccak256(str) {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-
-  const hex = (hash >>> 0).toString(16).padStart(8, "0")
-  return "0x" + hex.padEnd(64, "0")
+function getFunctionSelector(signature) {
+  return ethers.id(signature).slice(0, 10);
 }
 
 export function decodeInputData(inputData, abiFunction) {
