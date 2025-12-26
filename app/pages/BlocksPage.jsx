@@ -1,197 +1,151 @@
- 
-
 import { useState, useEffect } from "react"
 import { useBlockchain, useRouter } from "../App"
 import NavBar from "../components/NavBar"
 import Footer from "../components/Footer"
 import Skeleton from "../components/Skeleton"
-import { fetchBlocks } from "../lib/BlockchainApi"
-import { Search, RefreshCw, Copy, ExternalLink } from "lucide-react"
+import Tabs from "../components/Tabs"
+import { fetchBlockById } from "../lib/BlockchainApi"
+import { ArrowLeft, Copy } from "lucide-react"
 
-export default function BlocksPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [blocks, setBlocks] = useState([])
+export default function BlockDetailPage({ blockNumber }) {
+  const [block, setBlock] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [copiedHash, setCopiedHash] = useState(null)
+  const [copiedField, setCopiedField] = useState(null)
   const { rpcUrl } = useBlockchain()
-  const { navigate } = useRouter()
-
-  const loadBlocks = async () => {
-    if (!rpcUrl) return
-    try {
-      const data = await fetchBlocks(rpcUrl)
-      setBlocks(data)
-    } catch (error) {
-      console.error("Error fetching blocks:", error)
-    } finally {
-      setIsLoading(false)
-      setIsRefreshing(false)
-    }
-  }
+  const { goBack } = useRouter()
 
   useEffect(() => {
-    loadBlocks()
-  }, [rpcUrl])
-
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    loadBlocks()
-  }
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
-    if (/^\d+$/.test(searchQuery)) {
-      navigate("block-detail", { blockNumber: Number.parseInt(searchQuery) })
+    const loadBlock = async () => {
+      if (!rpcUrl || !blockNumber) return
+      try {
+        const data = await fetchBlockById(rpcUrl, blockNumber)
+        setBlock(data)
+      } catch (error) {
+        console.error("Error fetching block:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+    loadBlock()
+  }, [rpcUrl, blockNumber])
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text)
-    setCopiedHash(text)
-    setTimeout(() => setCopiedHash(null), 2000)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 2000)
   }
 
-  const truncateHash = (hash) => `${hash.slice(0, 10)}...${hash.slice(-8)}`
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <NavBar />
-
-      <main className="container mx-auto px-4 lg:px-8 py-8 space-y-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center space-y-4 mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-balance">Blocks Explorer</h1>
-            <p className="text-lg text-muted-foreground text-balance">Explore all blocks mined on the blockchain</p>
-          </div>
-
-          <form onSubmit={handleSearch}>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search by block number..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-lg pl-14 pr-4 w-full"
-              />
-            </div>
-          </form>
+  const OverviewContent = () => (
+    <div className="card p-6">
+      <div className="space-y-4">
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Number</span>
+          <span className="badge badge-outline font-mono text-sm">{block.number}</span>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Recent Blocks</h2>
-              <p className="text-sm text-muted-foreground">Latest blocks mined on the blockchain</p>
-            </div>
-            <button onClick={handleRefresh} disabled={isRefreshing} className="btn btn-outline btn-sm">
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Hash</span>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono text-foreground">{block.hash}</code>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.hash, "hash")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "hash" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
             </button>
           </div>
+        </div>
 
-          <div className="card overflow-hidden">
-            <div className="table-container">
-              <table className="table">
-                <thead className="table-header">
-                  <tr className="border-b border-border">
-                    <th className="table-head">Block</th>
-                    <th className="table-head">Hash</th>
-                    <th className="table-head">Miner</th>
-                    <th className="table-head">Txns</th>
-                    <th className="table-head">Gas Used</th>
-                    <th className="table-head">Reward</th>
-                    <th className="table-head">Time</th>
-                    <th className="table-head text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {isLoading
-                    ? [...Array(6)].map((_, index) => (
-                        <tr key={index} className="table-row">
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-20" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-32" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-28" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-12" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-24" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-20" />
-                          </td>
-                          <td className="table-cell">
-                            <Skeleton className="h-4 w-24" />
-                          </td>
-                          <td className="table-cell text-right">
-                            <Skeleton className="h-8 w-8 ml-auto" />
-                          </td>
-                        </tr>
-                      ))
-                    : blocks.map((block, index) => (
-                        <tr
-                          key={index}
-                          className="table-row cursor-pointer"
-                          onClick={() => navigate("block-detail", { blockNumber: block.number })}
-                        >
-                          <td className="table-cell">
-                            <span className="badge badge-outline font-mono text-xs">{block.number}</span>
-                          </td>
-                          <td className="table-cell">
-                            <div className="flex items-center gap-2">
-                              <code className="text-sm font-mono text-foreground">{truncateHash(block.hash)}</code>
-                              <button
-                                className="btn btn-ghost btn-icon"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  copyToClipboard(block.hash)
-                                }}
-                              >
-                                <Copy
-                                  className={`h-3 w-3 ${copiedHash === block.hash ? "text-primary" : "text-muted-foreground"}`}
-                                />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <code className="text-sm font-mono text-muted-foreground">{truncateHash(block.miner)}</code>
-                          </td>
-                          <td className="table-cell">
-                            <span className="text-sm font-medium text-foreground">{block.transactions}</span>
-                          </td>
-                          <td className="table-cell">
-                            <span className="text-sm text-muted-foreground">{block.gasUsed}</span>
-                          </td>
-                          <td className="table-cell">
-                            <span className="text-sm font-medium text-primary">{block.reward}</span>
-                          </td>
-                          <td className="table-cell text-sm text-muted-foreground">{block.timeAgo}</td>
-                          <td className="table-cell text-right">
-                            <button
-                              className="btn btn-ghost btn-sm text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                navigate("block-detail", { blockNumber: block.number })
-                              }}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                </tbody>
-              </table>
-            </div>
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
+          <div className="text-right">
+            <p className="text-sm text-foreground">{block.timeAgo}</p>
+            <p className="text-xs text-muted-foreground">{block.timestamp}</p>
           </div>
         </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Transactions</span>
+          <span className="text-sm font-medium text-foreground">{block.transactions} txns</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Miner</span>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono text-foreground">{block.miner}</code>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.miner, "miner")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "miner" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Gas Used</span>
+          <span className="text-sm text-foreground">{block.gasUsed}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Gas Limit</span>
+          <span className="text-sm text-foreground">{block.gasLimit}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Size</span>
+          <span className="text-sm text-foreground">{block.size}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3">
+          <span className="text-sm font-medium text-muted-foreground">Block Reward</span>
+          <span className="text-sm font-medium text-[oklch(0.65_0.25_151)]">{block.reward}</span>
+        </div>
+      </div>
+    </div>
+  )
+
+  const tabs = [{ id: "overview", label: "Overview", content: block ? <OverviewContent /> : null }]
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <NavBar />
+
+      <main className="container mx-auto px-4 lg:px-8 py-8 flex-1">
+        <button onClick={goBack} className="btn btn-ghost mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </button>
+
+        {isLoading ? (
+          <div className="space-y-6">
+            <div>
+              <Skeleton className="h-8 w-64 mb-2" />
+              <Skeleton className="h-4 w-96" />
+            </div>
+            <div className="card p-6">
+              <div className="space-y-4">
+                {[...Array(9)].map((_, i) => (
+                  <div key={i} className="flex justify-between items-start py-3 border-b border-border last:border-0">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-64" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : block ? (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Block #{block.number}</h1>
+              <p className="text-muted-foreground">View detailed information about this block</p>
+            </div>
+
+            <Tabs tabs={tabs} defaultTab="overview" />
+          </div>
+        ) : (
+          <div className="card p-12 text-center">
+            <p className="text-lg text-muted-foreground">Block not found</p>
+          </div>
+        )}
       </main>
 
       <Footer />

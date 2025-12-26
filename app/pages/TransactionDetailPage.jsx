@@ -3,6 +3,7 @@ import { useBlockchain, useRouter } from "../App"
 import NavBar from "../components/NavBar"
 import Footer from "../components/Footer"
 import Skeleton from "../components/Skeleton"
+import Tabs from "../components/Tabs"
 import DecodedTransactionInput from "../components/DecodedTransactionInput"
 import TransactionLogs from "../components/TransactionsLogs"
 import { fetchTransactionById } from "../lib/BlockchainApi"
@@ -71,6 +72,206 @@ export default function TransactionDetailPage({ hash }) {
     setTimeout(() => setCopiedField(null), 500)
   }
 
+  const OverviewContent = () => (
+    <div className="card p-6">
+      <div className="space-y-4">
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Transaction Hash</span>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono">{transaction.hash}</code>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.hash, "hash")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "hash" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Status</span>
+          <span className="text-sm px-2 py-1 rounded-full bg-[oklch(0.65_0.25_151)]/10 text-[oklch(0.65_0.25_151)]">
+            {transaction.status}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Number</span>
+          <button
+            onClick={() => navigate("block-detail", { blockNumber: transaction.blockNumber })}
+            className="text-sm text-[oklch(0.65_0.25_151)] hover:underline cursor-pointer"
+          >
+            {transaction.blockNumber}
+          </button>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
+          <div className="text-right">
+            <div className="text-sm">{transaction.timestamp}</div>
+            <div className="text-xs text-muted-foreground">{transaction.timeAgo}</div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">From</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("address-detail", { address: transaction.from })}
+              className="text-sm font-mono text-[oklch(0.65_0.25_151)] hover:underline cursor-pointer"
+            >
+              {transaction.from}
+            </button>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.from, "from")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "from" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">To</span>
+          <div className="flex items-center gap-2">
+            {transaction.to === "Contract Creation" ? (
+              <span className="text-sm text-muted-foreground">Contract Creation</span>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("address-detail", { address: transaction.to })}
+                  className="text-sm font-mono text-[oklch(0.65_0.25_151)] hover:underline cursor-pointer"
+                >
+                  {transaction.to}
+                </button>
+                <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.to, "to")}>
+                  <Copy
+                    className={`h-3 w-3 ${copiedField === "to" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+                  />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Value</span>
+          <div className="text-right">
+            <div className="text-sm font-semibold">{transaction.amount}</div>
+            <div className="text-xs text-muted-foreground">{transaction.value} ETH</div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Gas Used</span>
+          <span className="text-sm">{transaction.gasUsed}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3">
+          <span className="text-sm font-medium text-muted-foreground">Gas Price</span>
+          <span className="text-sm">{transaction.gasPrice}</span>
+        </div>
+      </div>
+    </div>
+  )
+
+  const InputDataContent = () => (
+    <div className="space-y-6">
+      {/* Raw Input Data */}
+      <div className="card p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Raw Input Data</h3>
+            {transaction.input && transaction.input !== "0x" && (
+              <button className="btn btn-ghost btn-sm" onClick={() => copyToClipboard(transaction.input, "input")}>
+                <Copy
+                  className={`h-3 w-3 mr-2 ${copiedField === "input" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+                />
+                Copy
+              </button>
+            )}
+          </div>
+          {transaction.input && transaction.input !== "0x" ? (
+            <div className="bg-muted/50 rounded-md p-4 border border-border">
+              <code className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
+                {transaction.input}
+              </code>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">No input data for this transaction</p>
+          )}
+        </div>
+      </div>
+
+      {/* ABI Management */}
+      {transaction.input && transaction.input !== "0x" && (
+        <div className="card p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Contract ABI</h3>
+                <p className="text-sm text-muted-foreground">Add an ABI to decode the input data</p>
+              </div>
+              {contractABI ? (
+                <button onClick={handleRemoveABI} className="btn btn-outline btn-sm text-destructive">
+                  <Trash2 className="w-3 h-3 mr-2" />
+                  Remove ABI
+                </button>
+              ) : (
+                <button onClick={() => setShowABIInput(!showABIInput)} className="btn btn-outline btn-sm">
+                  <FileCode className="w-3 h-3 mr-2" />
+                  {showABIInput ? "Cancel" : "Add ABI"}
+                </button>
+              )}
+            </div>
+
+            {showABIInput && !contractABI && (
+              <div className="space-y-4 pt-4 border-t border-border">
+                <textarea
+                  placeholder='[{"type":"function","name":"transfer","inputs":[...]}]'
+                  value={abiInput}
+                  onChange={(e) => setAbiInput(e.target.value)}
+                  className="textarea min-h-[200px] font-mono text-sm"
+                />
+                {abiError && <p className="text-sm text-destructive">{abiError}</p>}
+                <button onClick={handleParseABI} className="btn btn-primary btn-md">
+                  Parse and Save ABI
+                </button>
+              </div>
+            )}
+
+            {contractABI && (
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm text-[oklch(0.65_0.25_151)]">ABI loaded successfully</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Decoded Input */}
+      {contractABI && transaction.input && transaction.input !== "0x" && (
+        <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
+      )}
+    </div>
+  )
+
+  const EventsContent = () => (
+    <div className="space-y-6">
+      {transaction.logs && transaction.logs.length > 0 ? (
+        <TransactionLogs logs={transaction.logs} abi={contractABI} />
+      ) : (
+        <div className="card p-12 text-center">
+          <p className="text-muted-foreground">No events emitted in this transaction</p>
+        </div>
+      )}
+    </div>
+  )
+
+  const tabs = [
+    { id: "overview", label: "Overview", content: <OverviewContent /> },
+    { id: "input-data", label: "Input Data", content: <InputDataContent /> },
+    { id: "events", label: "Events", content: <EventsContent /> },
+  ]
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <NavBar />
@@ -105,183 +306,7 @@ export default function TransactionDetailPage({ hash }) {
               <p className="text-muted-foreground">View detailed information about this transaction</p>
             </div>
 
-            <div className="card p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Transaction Hash</span>
-                  <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono">{transaction.hash}</code>
-                    <button
-                      className="btn btn-ghost btn-icon"
-                      onClick={() => copyToClipboard(transaction.hash, "hash")}
-                    >
-                      <Copy
-                        className={`h-3 w-3 ${copiedField === "hash" ? "text-primary" : "text-muted-foreground"}`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Status</span>
-                  <span className="text-sm px-2 py-1 rounded-full bg-primary/10 text-primary">
-                    {transaction.status}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Block Number</span>
-                  <button
-                    onClick={() => navigate("block-detail", { blockNumber: transaction.blockNumber })}
-                    className="text-sm text-primary hover:underline cursor-pointer"
-                  >
-                    {transaction.blockNumber}
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
-                  <div className="text-right">
-                    <div className="text-sm">{transaction.timestamp}</div>
-                    <div className="text-xs text-muted-foreground">{transaction.timeAgo}</div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">From</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigate("address-detail", { address: transaction.from })}
-                      className="text-sm font-mono text-primary hover:underline cursor-pointer"
-                    >
-                      {transaction.from}
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-icon"
-                      onClick={() => copyToClipboard(transaction.from, "from")}
-                    >
-                      <Copy
-                        className={`h-3 w-3 ${copiedField === "from" ? "text-primary" : "text-muted-foreground"}`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">To</span>
-                  <div className="flex items-center gap-2">
-                    {transaction.to === "Contract Creation" ? (
-                      <span className="text-sm text-muted-foreground">Contract Creation</span>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => navigate("address-detail", { address: transaction.to })}
-                          className="text-sm font-mono text-primary hover:underline cursor-pointer"
-                        >
-                          {transaction.to}
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          onClick={() => copyToClipboard(transaction.to, "to")}
-                        >
-                          <Copy
-                            className={`h-3 w-3 ${copiedField === "to" ? "text-primary" : "text-muted-foreground"}`}
-                          />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Value</span>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold">{transaction.amount}</div>
-                    <div className="text-xs text-muted-foreground">{transaction.value} ETH</div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Gas Used</span>
-                  <span className="text-sm">{transaction.gasUsed}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Gas Price</span>
-                  <span className="text-sm">{transaction.gasPrice}</span>
-                </div>
-
-                {transaction.input && transaction.input !== "0x" && (
-                  <div className="flex flex-col gap-2 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Input Data</span>
-                      <div className="flex gap-2">
-                        <button
-                          className="btn btn-ghost btn-icon"
-                          onClick={() => copyToClipboard(transaction.input, "input")}
-                        >
-                          <Copy
-                            className={`h-3 w-3 ${copiedField === "input" ? "text-primary" : "text-muted-foreground"}`}
-                          />
-                        </button>
-                        {contractABI ? (
-                          <button onClick={handleRemoveABI} className="btn btn-outline btn-sm text-destructive">
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Remove ABI
-                          </button>
-                        ) : (
-                          <button onClick={() => setShowABIInput(!showABIInput)} className="btn btn-outline btn-sm">
-                            <FileCode className="w-3 h-3 mr-1" />
-                            Add ABI to Decode
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-muted/50 rounded-md p-4 border border-border">
-                      <code className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
-                        {transaction.input}
-                      </code>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {showABIInput && !contractABI && transaction.input && transaction.input !== "0x" && (
-              <div className="card p-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Add Contract ABI</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Paste the contract ABI to decode the transaction input data
-                    </p>
-                  </div>
-                  <textarea
-                    placeholder='[{"type":"function","name":"transfer","inputs":[...]}]'
-                    value={abiInput}
-                    onChange={(e) => setAbiInput(e.target.value)}
-                    className="textarea min-h-[200px] font-mono text-sm"
-                  />
-                  {abiError && <p className="text-sm text-destructive">{abiError}</p>}
-                  <div className="flex gap-2">
-                    <button onClick={handleParseABI} className="btn btn-primary btn-md">
-                      Parse and Save ABI
-                    </button>
-                    <button onClick={() => setShowABIInput(false)} className="btn btn-outline btn-md">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {contractABI && transaction.input && transaction.input !== "0x" && (
-              <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
-            )}
-
-            {transaction.logs && transaction.logs.length > 0 && (
-              <TransactionLogs logs={transaction.logs} abi={contractABI} />
-            )}
+            <Tabs tabs={tabs} defaultTab="overview" />
           </div>
         ) : (
           <div className="card p-12 text-center">
