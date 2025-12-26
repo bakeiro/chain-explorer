@@ -1,10 +1,9 @@
- 
-
 import { useState, useEffect } from "react"
 import { useBlockchain, useRouter } from "../App"
 import NavBar from "../components/NavBar"
 import Footer from "../components/Footer"
 import Skeleton from "../components/Skeleton"
+import Tabs from "../components/Tabs"
 import { fetchBlockById } from "../lib/BlockchainApi"
 import { ArrowLeft, Copy } from "lucide-react"
 
@@ -35,6 +34,76 @@ export default function BlockDetailPage({ blockNumber }) {
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 2000)
   }
+
+  const OverviewContent = () => (
+    <div className="card p-6">
+      <div className="space-y-4">
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Number</span>
+          <span className="badge badge-outline font-mono text-sm">{block.number}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Hash</span>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono text-foreground">{block.hash}</code>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.hash, "hash")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "hash" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
+          <div className="text-right">
+            <p className="text-sm text-foreground">{block.timeAgo}</p>
+            <p className="text-xs text-muted-foreground">{block.timestamp}</p>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Transactions</span>
+          <span className="text-sm font-medium text-foreground">{block.transactions} txns</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Miner</span>
+          <div className="flex items-center gap-2">
+            <code className="text-sm font-mono text-foreground">{block.miner}</code>
+            <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.miner, "miner")}>
+              <Copy
+                className={`h-3 w-3 ${copiedField === "miner" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Gas Used</span>
+          <span className="text-sm text-foreground">{block.gasUsed}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Gas Limit</span>
+          <span className="text-sm text-foreground">{block.gasLimit}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3 border-b border-border">
+          <span className="text-sm font-medium text-muted-foreground">Block Size</span>
+          <span className="text-sm text-foreground">{block.size}</span>
+        </div>
+
+        <div className="flex justify-between items-start py-3">
+          <span className="text-sm font-medium text-muted-foreground">Block Reward</span>
+          <span className="text-sm font-medium text-[oklch(0.65_0.25_151)]">{block.reward}</span>
+        </div>
+      </div>
+    </div>
+  )
+
+  const tabs = [{ id: "overview", label: "Overview", content: block ? <OverviewContent /> : null }]
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -70,71 +139,7 @@ export default function BlockDetailPage({ blockNumber }) {
               <p className="text-muted-foreground">View detailed information about this block</p>
             </div>
 
-            <div className="card p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Block Number</span>
-                  <span className="badge badge-outline font-mono text-sm">{block.number}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Block Hash</span>
-                  <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono text-foreground">{block.hash}</code>
-                    <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.hash, "hash")}>
-                      <Copy
-                        className={`h-3 w-3 ${copiedField === "hash" ? "text-primary" : "text-muted-foreground"}`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
-                  <div className="text-right">
-                    <p className="text-sm text-foreground">{block.timeAgo}</p>
-                    <p className="text-xs text-muted-foreground">{block.timestamp}</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Transactions</span>
-                  <span className="text-sm font-medium text-foreground">{block.transactions} txns</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Miner</span>
-                  <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono text-foreground">{block.miner}</code>
-                    <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(block.miner, "miner")}>
-                      <Copy
-                        className={`h-3 w-3 ${copiedField === "miner" ? "text-primary" : "text-muted-foreground"}`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Gas Used</span>
-                  <span className="text-sm text-foreground">{block.gasUsed}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Gas Limit</span>
-                  <span className="text-sm text-foreground">{block.gasLimit}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3 border-b border-border">
-                  <span className="text-sm font-medium text-muted-foreground">Block Size</span>
-                  <span className="text-sm text-foreground">{block.size}</span>
-                </div>
-
-                <div className="flex justify-between items-start py-3">
-                  <span className="text-sm font-medium text-muted-foreground">Block Reward</span>
-                  <span className="text-sm font-medium text-primary">{block.reward}</span>
-                </div>
-              </div>
-            </div>
+            <Tabs tabs={tabs} defaultTab="overview" />
           </div>
         ) : (
           <div className="card p-12 text-center">
