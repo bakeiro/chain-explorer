@@ -1,22 +1,30 @@
 import RPCClient from "./RpcClient"
 import {
   hexToDecimal,
+  decimalToHex,
   weiToEth,
   weiToGwei,
   formatEthValue,
   formatGweiValue,
   formatGasValue,
   formatBlockSize,
+  formatTokenValue,
   getTimeAgo,
   formatTimestamp,
   isValidTransactionInput,
+  isContractCode,
+  normalizeAddress,
+  addressesMatch,
+  padAddressToBytes32,
 } from "./Formatters"
-import { BLOCKCHAIN_CONFIG } from "./Constants"
+import { BLOCKCHAIN_CONFIG, ERC20_TOPICS, INTERNAL_TX_TYPES, TX_DIRECTION } from "./Constants"
 
+// Factory
 function createRPCClient(rpcUrl) {
   return new RPCClient(rpcUrl)
 }
 
+// Parsers
 function parseTransaction(tx, blockTimestamp) {
   const value = weiToEth(tx.value || "0x0")
   const gasPrice = weiToGwei(tx.gasPrice || "0x0")
@@ -27,7 +35,7 @@ function parseTransaction(tx, blockTimestamp) {
     to: tx.to || "Contract Creation",
     amount: formatEthValue(value),
     value,
-    type: "send",
+    type: TX_DIRECTION.SEND,
     timestamp: formatTimestamp(blockTimestamp),
     timeAgo: getTimeAgo(blockTimestamp),
     status: "success",
@@ -59,11 +67,22 @@ function parseBlock(rawBlock) {
   }
 }
 
+// Helpers
 async function getLatestBlockNumber(client) {
   const latestBlockHex = await client.getBlockNumber()
   return hexToDecimal(latestBlockHex)
 }
 
+async function getBlockTimestamp(client, blockNumber) {
+  const block = await client.getBlock(blockNumber, false)
+  return block ? hexToDecimal(block.timestamp) : Date.now() / 1000
+}
+
+function determineTransactionDirection(tx, targetAddress) {
+  return addressesMatch(tx.from, targetAddress) ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE
+}
+
+// Collectors
 async function collectTransactionsFromBlocks(client, startBlock, maxBlocks, maxTransactions) {
   const transactions = []
 
@@ -71,9 +90,7 @@ async function collectTransactionsFromBlocks(client, startBlock, maxBlocks, maxT
     const blockNumber = startBlock - i
     const block = await client.getBlock(blockNumber, true)
 
-    if (!block || !Array.isArray(block.transactions)) {
-      continue
-    }
+    if (!block?.transactions || !Array.isArray(block.transactions)) continue
 
     const blockTimestamp = hexToDecimal(block.timestamp)
     const blockTxs = block.transactions.slice(0, BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_BLOCK)
@@ -81,10 +98,7 @@ async function collectTransactionsFromBlocks(client, startBlock, maxBlocks, maxT
     for (const tx of blockTxs) {
       if (typeof tx === "object" && tx.hash) {
         transactions.push(parseTransaction(tx, blockTimestamp))
-
-        if (transactions.length >= maxTransactions) {
-          break
-        }
+        if (transactions.length >= maxTransactions) break
       }
     }
   }
@@ -92,6 +106,7 @@ async function collectTransactionsFromBlocks(client, startBlock, maxBlocks, maxT
   return transactions
 }
 
+// Public API
 export async function fetchTransactions(rpcUrl) {
   const client = createRPCClient(rpcUrl)
 
@@ -122,10 +137,7 @@ export async function fetchBlocks(rpcUrl) {
     for (let i = 0; i < blocksToFetch; i++) {
       const blockNumber = latestBlockNumber - i
       const block = await client.getBlock(blockNumber, false)
-
-      if (block) {
-        blocks.push(parseBlock(block))
-      }
+      if (block) blocks.push(parseBlock(block))
     }
 
     return blocks
@@ -136,35 +148,18 @@ export async function fetchBlocks(rpcUrl) {
 }
 
 async function calculateAverageBlockTime(client, latestBlockNumber) {
-  const block1 = await client.getBlock(latestBlockNumber, false)
-  const block2 = await client.getBlock(latestBlockNumber - 1, false)
+  const [block1, block2] = await Promise.all([
+    client.getBlock(latestBlockNumber, false),
+    client.getBlock(latestBlockNumber - 1, false),
+  ])
 
-  if (!block1 || !block2) {
-    return "12s"
-  }
+  if (!block1 || !block2) return "12s"
 
-  const time1 = hexToDecimal(block1.timestamp)
-  const time2 = hexToDecimal(block2.timestamp)
-  const timeDifference = time1 - time2
-
+  const timeDifference = hexToDecimal(block1.timestamp) - hexToDecimal(block2.timestamp)
   return `${timeDifference}s`
 }
 
-async function estimateTotalTransactions(client, latestBlockNumber) {
-  let totalTransactions = 0
-
-  for (let i = 0; i < BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_FETCH; i++) {
-    const block = await client.getBlock(latestBlockNumber - i, false)
-
-    if (block?.transactions) {
-      totalTransactions += Array.isArray(block.transactions) ? block.transactions.length : 0
-    }
-  }
-
-  return totalTransactions * 100
-}
-
-async function calculateTPS(client, blockCount = 10) {
+async function calculateTPS(client, blockCount = BLOCKCHAIN_CONFIG.TPS_BLOCK_SAMPLE_SIZE) {
   try {
     const currentBlockNum = await getLatestBlockNumber(client)
     let totalTxs = 0
@@ -192,16 +187,6 @@ async function calculateTPS(client, blockCount = 10) {
   }
 }
 
-async function getChainId(client) {
-  try {
-    const chainIdHex = await client.getChainId()
-    return hexToDecimal(chainIdHex)
-  } catch (error) {
-    console.error("Error getting chain ID:", error)
-    return 0
-  }
-}
-
 export async function fetchStats(rpcUrl) {
   const client = createRPCClient(rpcUrl)
 
@@ -210,23 +195,22 @@ export async function fetchStats(rpcUrl) {
     const gasPriceHex = await client.getGasPrice()
     const gasPrice = weiToGwei(gasPriceHex)
     const latestBlock = await client.getBlock("latest", true)
-    const chainId = await getChainId(client)
-    const tps = await calculateTPS(client, 10)
 
-    const [avgBlockTime, totalTransactions] = await Promise.all([
+    const [chainIdHex, avgBlockTime, tps] = await Promise.all([
+      client.getChainId().catch(() => "0x0"),
       calculateAverageBlockTime(client, latestBlockNumber),
-      estimateTotalTransactions(client, latestBlockNumber),
+      calculateTPS(client),
     ])
 
     return {
       totalBlocks: latestBlockNumber,
-      totalTransactions,
+      totalTransactions: latestBlockNumber * 100, // Estimate
       volume24h: "$0.00",
       activeWallets: 0,
       avgBlockTime,
       avgGasPrice: formatGweiValue(gasPrice),
       tps,
-      chainId,
+      chainId: hexToDecimal(chainIdHex),
       latestBlockTransactions: Array.isArray(latestBlock.transactions) ? latestBlock.transactions.length : 0,
     }
   } catch (error) {
@@ -240,20 +224,13 @@ export async function fetchTransactionById(rpcUrl, hash) {
 
   try {
     const tx = await client.getTransaction(hash)
+    if (!tx) return null
 
-    if (!tx) {
-      return null
-    }
-
-    const block = await client.getBlock(hexToDecimal(tx.blockNumber || "0x0"), false)
-    const blockTimestamp = block ? hexToDecimal(block.timestamp) : Date.now() / 1000
-
+    const blockTimestamp = await getBlockTimestamp(client, hexToDecimal(tx.blockNumber || "0x0"))
     const receipt = await client.getTransactionReceipt(hash)
-
     const transaction = parseTransaction(tx, blockTimestamp)
 
-    // Añadir logs al objeto transaction
-    if (receipt && receipt.logs) {
+    if (receipt?.logs) {
       transaction.logs = receipt.logs
       transaction.logsCount = receipt.logs.length
     }
@@ -270,12 +247,7 @@ export async function fetchBlockById(rpcUrl, number) {
 
   try {
     const block = await client.getBlock(number, false)
-
-    if (!block) {
-      return null
-    }
-
-    return parseBlock(block)
+    return block ? parseBlock(block) : null
   } catch (error) {
     console.error("Error fetching block:", error)
     return null
@@ -286,36 +258,27 @@ export async function fetchAddressByAddress(rpcUrl, address) {
   const client = createRPCClient(rpcUrl)
 
   try {
-    const balanceHex = await client.getBalance(address)
+    const [balanceHex, code, txCountHex] = await Promise.all([
+      client.getBalance(address),
+      client.getCode(address),
+      client.getTransactionCount(address),
+    ])
+
     const balanceEth = weiToEth(balanceHex)
-
-    const code = await client.getCode(address)
-    const isContract = code !== "0x" && code.length > 2
-
-    const txCountHex = await client.getTransactionCount(address)
-    const transactionCount = hexToDecimal(txCountHex)
+    const isContract = isContractCode(code)
 
     return {
       address,
       balance: formatEthValue(balanceEth),
       balanceEth,
       isContract,
-      transactionCount,
+      transactionCount: hexToDecimal(txCountHex),
       code: isContract ? code : undefined,
     }
   } catch (error) {
     console.error("Error fetching address:", error)
     return null
   }
-}
-
-function addressMatchesTransaction(tx, targetAddress) {
-  const normalizedTarget = targetAddress.toLowerCase()
-  return tx.from?.toLowerCase() === normalizedTarget || tx.to?.toLowerCase() === normalizedTarget
-}
-
-function determineTransactionType(tx, targetAddress) {
-  return tx.from?.toLowerCase() === targetAddress.toLowerCase() ? "send" : "receive"
 }
 
 export async function fetchAddressTransactions(rpcUrl, address) {
@@ -330,22 +293,21 @@ export async function fetchAddressTransactions(rpcUrl, address) {
       const blockNumber = latestBlockNumber - i
       const block = await client.getBlock(blockNumber, true)
 
-      if (!block?.transactions || !Array.isArray(block.transactions)) {
-        continue
-      }
+      if (!block?.transactions || !Array.isArray(block.transactions)) continue
 
       const blockTimestamp = hexToDecimal(block.timestamp)
 
       for (const tx of block.transactions) {
-        if (typeof tx === "object" && tx.hash && addressMatchesTransaction(tx, address)) {
-          const transaction = parseTransaction(tx, blockTimestamp)
-          transaction.type = determineTransactionType(tx, address)
-          transactions.push(transaction)
+        if (typeof tx !== "object" || !tx.hash) continue
 
-          if (transactions.length >= BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST) {
-            break
-          }
-        }
+        const isMatch = addressesMatch(tx.from, address) || addressesMatch(tx.to, address)
+        if (!isMatch) continue
+
+        const transaction = parseTransaction(tx, blockTimestamp)
+        transaction.type = determineTransactionDirection(tx, address)
+        transactions.push(transaction)
+
+        if (transactions.length >= BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST) break
       }
     }
 
@@ -353,5 +315,164 @@ export async function fetchAddressTransactions(rpcUrl, address) {
   } catch (error) {
     console.error("Error fetching address transactions:", error)
     throw error
+  }
+}
+
+export async function fetchERC20Transfers(rpcUrl, address) {
+  const client = createRPCClient(rpcUrl)
+
+  try {
+    const latestBlockNumber = await getLatestBlockNumber(client)
+    const fromBlock = Math.max(0, latestBlockNumber - BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS)
+    const paddedAddress = padAddressToBytes32(address)
+
+    // Fetch transfers where address is sender or receiver
+    const [logsFrom, logsTo] = await Promise.all([
+      client.getLogs({
+        fromBlock: decimalToHex(fromBlock),
+        toBlock: "latest",
+        topics: [ERC20_TOPICS.TRANSFER, paddedAddress, null],
+      }),
+      client.getLogs({
+        fromBlock: decimalToHex(fromBlock),
+        toBlock: "latest",
+        topics: [ERC20_TOPICS.TRANSFER, null, paddedAddress],
+      }),
+    ])
+
+    const transfers = []
+    const allLogs = [...logsFrom, ...logsTo]
+
+    for (const log of allLogs) {
+      const blockNumber = hexToDecimal(log.blockNumber)
+      const blockTimestamp = await getBlockTimestamp(client, blockNumber)
+
+      const from = "0x" + log.topics[1].slice(26)
+      const to = "0x" + log.topics[2].slice(26)
+      const value = hexToDecimal(log.data)
+      const isOutgoing = addressesMatch(from, address)
+
+      transfers.push({
+        hash: log.transactionHash,
+        logIndex: hexToDecimal(log.logIndex),
+        blockNumber,
+        tokenAddress: log.address,
+        from,
+        to,
+        value: value.toString(),
+        formattedValue: formatTokenValue(value),
+        type: isOutgoing ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
+        timestamp: formatTimestamp(blockTimestamp),
+        timeAgo: getTimeAgo(blockTimestamp),
+      })
+    }
+
+    // Remove duplicates and sort
+    return transfers
+      .filter((t, i, self) => i === self.findIndex((x) => x.hash === t.hash && x.logIndex === t.logIndex))
+      .sort((a, b) => b.blockNumber - a.blockNumber)
+      .slice(0, BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST)
+  } catch (error) {
+    console.error("Error fetching ERC20 transfers:", error)
+    return []
+  }
+}
+
+function extractInternalTxsFromTrace(trace, parentTxHash, targetAddress, depth = 0) {
+  const internalTxs = []
+  if (!trace) return internalTxs
+
+  const from = normalizeAddress(trace.from)
+  const to = normalizeAddress(trace.to)
+  const target = normalizeAddress(targetAddress)
+
+  // Check if this call involves the target address (excluding depth 0)
+  if (depth > 0 && (from === target || to === target)) {
+    const value = trace.value ? hexToDecimal(trace.value) : 0
+
+    internalTxs.push({
+      parentTxHash,
+      type: trace.type || INTERNAL_TX_TYPES.CALL,
+      from: trace.from || "0x0",
+      to: trace.to || "Contract Creation",
+      value: value.toString(),
+      formattedValue: formatEthValue(weiToEth(decimalToHex(value))),
+      gasUsed: trace.gasUsed ? hexToDecimal(trace.gasUsed) : 0,
+      input: trace.input,
+      output: trace.output,
+      depth,
+      error: trace.error,
+      direction: from === target ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
+    })
+  }
+
+  // Recursively process nested calls
+  if (Array.isArray(trace.calls)) {
+    for (const call of trace.calls) {
+      internalTxs.push(...extractInternalTxsFromTrace(call, parentTxHash, targetAddress, depth + 1))
+    }
+  }
+
+  return internalTxs
+}
+
+export async function fetchInternalTransactions(rpcUrl, address) {
+  const client = createRPCClient(rpcUrl)
+
+  try {
+    const transactions = await fetchAddressTransactions(rpcUrl, address)
+    const latestBlockNumber = await getLatestBlockNumber(client)
+    const blocksToSearch = Math.min(BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS, latestBlockNumber)
+
+    const txHashesToTrace = new Set(transactions.map((tx) => tx.hash))
+
+    // Find contract calls that might have internal txs
+    for (let i = 0; i < blocksToSearch; i++) {
+      const blockNumber = latestBlockNumber - i
+      const block = await client.getBlock(blockNumber, true)
+
+      if (!block?.transactions) continue
+
+      for (const tx of block.transactions) {
+        if (typeof tx === "object" && tx.hash && tx.to && tx.input && tx.input !== "0x") {
+          txHashesToTrace.add(tx.hash)
+        }
+      }
+
+      if (txHashesToTrace.size >= BLOCKCHAIN_CONFIG.MAX_TX_HASHES_TO_TRACE) break
+    }
+
+    const internalTxs = []
+
+    for (const txHash of txHashesToTrace) {
+      try {
+        const trace = await client.traceTransaction(txHash)
+        if (!trace) continue
+
+        const tx = await client.getTransaction(txHash)
+        const blockTimestamp = tx?.blockNumber
+          ? await getBlockTimestamp(client, hexToDecimal(tx.blockNumber))
+          : Date.now() / 1000
+
+        const extracted = extractInternalTxsFromTrace(trace, txHash, address, 0)
+
+        for (const internalTx of extracted) {
+          internalTx.timestamp = formatTimestamp(blockTimestamp)
+          internalTx.timeAgo = getTimeAgo(blockTimestamp)
+          internalTx.blockNumber = tx?.blockNumber ? hexToDecimal(tx.blockNumber) : 0
+        }
+
+        internalTxs.push(...extracted)
+      } catch {
+        // Tracing might not be available, skip silently
+      }
+    }
+
+    return internalTxs
+      .sort((a, b) => b.blockNumber - a.blockNumber)
+      .slice(0, BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST)
+  } catch (error) {
+    console.error("Error fetching internal transactions:", error)
+    return []
   }
 }

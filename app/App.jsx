@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import "../main.css";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -12,216 +12,64 @@ import AddressDetailPage from "./pages/AddressDetailPage";
 // Components
 import RpcConnector from "./components/RpcConnector";
 
-// Context
-const BlockchainContext = createContext(null);
-const RouterContext = createContext(null);
+// Contexts
+import { RouterProvider, useRouter } from "./contexts/RouterContext";
+import { BlockchainProvider, useBlockchain } from "./contexts/BlockchainContext";
 
-// Storage keys
-const STORAGE_KEYS = {
-  RPC_URL: "blockchain_rpc_url",
-  CONTRACT_ABIS: "blockchain_contract_abis",
-  ADDRESS_LABELS: "blockchain_address_labels",
+// Re-export hooks for external use
+export { useRouter } from "./contexts/RouterContext";
+export { useBlockchain } from "./contexts/BlockchainContext";
+
+// Page component mapping
+const PAGES = {
+  home: HomePage,
+  transactions: TransactionsPage,
+  blocks: BlocksPage,
+  addresses: AddressesPage,
+  "block-detail": BlockDetailPage,
+  "transaction-detail": TransactionDetailPage,
+  "address-detail": AddressDetailPage,
 };
 
-// Router Hook
-export function useRouter() {
-  const context = useContext(RouterContext);
-  if (!context) {
-    throw new Error("useRouter must be used within RouterProvider");
-  }
-  return context;
-}
+// Props mapping for detail pages
+const getPageProps = (page, params) => {
+  const propsMap = {
+    "block-detail": { blockNumber: params.blockNumber },
+    "transaction-detail": { hash: params.hash },
+    "address-detail": { address: params.address },
+  };
+  return propsMap[page] ?? {};
+};
 
-// Blockchain Hook
-export function useBlockchain() {
-  const context = useContext(BlockchainContext);
-  if (!context) {
-    throw new Error("useBlockchain must be used within BlockchainProvider");
+function AppContent() {
+  const { rpcUrl, isConnected } = useBlockchain();
+  const { currentPage, pageParams } = useRouter();
+
+  if (!isConnected) {
+    return (
+      <div className="dark min-h-screen bg-background">
+        <RpcConnector />
+      </div>
+    );
   }
-  return context;
+
+  const PageComponent = PAGES[currentPage] ?? HomePage;
+  const pageProps = getPageProps(currentPage, pageParams);
+
+  return (
+    <div className="dark min-h-screen bg-background text-foreground">
+      <PageComponent {...pageProps} />
+    </div>
+  );
 }
 
 function App() {
-  // Router state
-  const [currentPage, setCurrentPage] = useState("home");
-  const [pageParams, setPageParams] = useState({});
-
-  // Blockchain state
-  const [rpcUrl, setRpcUrlState] = useState(null);
-  const [contractABIs, setContractABIs] = useState({});
-  const [addressLabels, setAddressLabels] = useState({});
-
-  // Load saved data on mount
-  useEffect(() => {
-    const savedRpcUrl = localStorage.getItem(STORAGE_KEYS.RPC_URL);
-    if (savedRpcUrl) {
-      setRpcUrlState(savedRpcUrl);
-    }
-
-    const savedABIs = localStorage.getItem(STORAGE_KEYS.CONTRACT_ABIS);
-    if (savedABIs) {
-      try {
-        setContractABIs(JSON.parse(savedABIs));
-      } catch (error) {
-        console.error("Failed to parse saved ABIs:", error);
-      }
-    }
-
-    const savedLabels = localStorage.getItem(STORAGE_KEYS.ADDRESS_LABELS);
-    if (savedLabels) {
-      try {
-        setAddressLabels(JSON.parse(savedLabels));
-      } catch (error) {
-        console.error("Failed to parse saved labels:", error);
-      }
-    }
-  }, []);
-
-  // Router functions
-  const navigate = (page, params = {}) => {
-    setCurrentPage(page);
-    setPageParams(params);
-  };
-
-  const goBack = () => {
-    // Simple back navigation based on page hierarchy
-    if (currentPage.includes("detail")) {
-      const basePage = currentPage.replace("-detail", "s");
-      navigate(basePage);
-    } else {
-      navigate("home");
-    }
-  };
-
-  // Blockchain functions
-  const setRpcUrl = (url) => {
-    setRpcUrlState(url);
-    if (url) {
-      localStorage.setItem(STORAGE_KEYS.RPC_URL, url);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.RPC_URL);
-    }
-  };
-
-  const disconnect = () => {
-    setRpcUrlState(null);
-    localStorage.removeItem(STORAGE_KEYS.RPC_URL);
-    navigate("home");
-  };
-
-  const getContractABI = (address) => {
-    const normalizedAddress = address.toLowerCase();
-    return contractABIs[normalizedAddress] || null;
-  };
-
-  const saveContractABI = (address, abi) => {
-    const normalizedAddress = address.toLowerCase();
-    const updatedABIs = { ...contractABIs, [normalizedAddress]: abi };
-    setContractABIs(updatedABIs);
-    localStorage.setItem(
-      STORAGE_KEYS.CONTRACT_ABIS,
-      JSON.stringify(updatedABIs),
-    );
-  };
-
-  const removeContractABI = (address) => {
-    const normalizedAddress = address.toLowerCase();
-    const updatedABIs = { ...contractABIs };
-    delete updatedABIs[normalizedAddress];
-    setContractABIs(updatedABIs);
-    localStorage.setItem(
-      STORAGE_KEYS.CONTRACT_ABIS,
-      JSON.stringify(updatedABIs),
-    );
-  };
-
-  const getAddressLabel = (address) => {
-    const normalizedAddress = address.toLowerCase();
-    return addressLabels[normalizedAddress] || null;
-  };
-
-  const saveAddressLabel = (address, label) => {
-    const normalizedAddress = address.toLowerCase();
-    const updatedLabels = { ...addressLabels, [normalizedAddress]: label };
-    setAddressLabels(updatedLabels);
-    localStorage.setItem(
-      STORAGE_KEYS.ADDRESS_LABELS,
-      JSON.stringify(updatedLabels),
-    );
-  };
-
-  const removeAddressLabel = (address) => {
-    const normalizedAddress = address.toLowerCase();
-    const updatedLabels = { ...addressLabels };
-    delete updatedLabels[normalizedAddress];
-    setAddressLabels(updatedLabels);
-    localStorage.setItem(
-      STORAGE_KEYS.ADDRESS_LABELS,
-      JSON.stringify(updatedLabels),
-    );
-  };
-
-  const routerValue = {
-    currentPage,
-    pageParams,
-    navigate,
-    goBack,
-  };
-
-  const blockchainValue = {
-    rpcUrl,
-    setRpcUrl,
-    isConnected: !!rpcUrl,
-    disconnect,
-    getContractABI,
-    saveContractABI,
-    removeContractABI,
-    getAddressLabel,
-    saveAddressLabel,
-    removeAddressLabel,
-  };
-
-  // Show RPC connector if not connected
-  if (!rpcUrl) {
-    return (
-      <BlockchainContext.Provider value={blockchainValue}>
-        <div className="dark min-h-screen bg-background">
-          <RpcConnector />
-        </div>
-      </BlockchainContext.Provider>
-    );
-  }
-
-  // Render current page
-  const renderPage = () => {
-    switch (currentPage) {
-      case "home":
-        return <HomePage />;
-      case "transactions":
-        return <TransactionsPage />;
-      case "blocks":
-        return <BlocksPage />;
-      case "addresses":
-        return <AddressesPage />;
-      case "block-detail":
-        return <BlockDetailPage blockNumber={pageParams.blockNumber} />;
-      case "transaction-detail":
-        return <TransactionDetailPage hash={pageParams.hash} />;
-      case "address-detail":
-        return <AddressDetailPage address={pageParams.address} />;
-      default:
-        return <HomePage />;
-    }
-  };
-
   return (
-    <BlockchainContext.Provider value={blockchainValue}>
-      <RouterContext.Provider value={routerValue}>
-        <div className="dark min-h-screen bg-background text-foreground">
-          {renderPage()}
-        </div>
-      </RouterContext.Provider>
-    </BlockchainContext.Provider>
+    <BlockchainProvider>
+      <RouterProvider>
+        <AppContent />
+      </RouterProvider>
+    </BlockchainProvider>
   );
 }
 
