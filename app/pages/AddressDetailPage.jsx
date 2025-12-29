@@ -414,19 +414,32 @@ export default function AddressDetailPage({ address }) {
             <h1 className="text-3xl font-bold text-foreground">
               Address Details
             </h1>
-            {addressData && (
-              <span
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-lg font-semibold ${
-                  addressData.isContract
-                    ? "bg-muted text-foreground border border-border"
-                    : "bg-secondary text-secondary-foreground"
-                }`}
-              >
-                {addressData.isContract
-                  ? (<> <FileCode className="w-5 h-5" /> Contract </>)
-                  : (<> <Wallet className="w-5 h-5" /> Wallet </>)}
+
+            <div>
+              {addressData && (
+                <span
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-lg font-semibold ${
+                    addressData.isContract
+                      ? "bg-muted text-foreground border border-border"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {addressData.isContract
+                    ? (<> <FileCode className="w-5 h-5" /> Contract </>)
+                    : (<> <Wallet className="w-5 h-5" /> Wallet </>)}
                 </span>
               )}
+
+              <button
+                onClick={handleToggleSave}
+                className={`btn ml-2 px-2 py-3 ${isSaved ? "btn-primary" : "btn-outline"} flex items-center gap-2`}
+              >
+                {isSaved
+                  ? (<BookmarkCheck className="w-5 h-5" />)
+                  : (<Bookmark className="w-5 h-5" />)
+                }
+              </button>
+            </div>
           </div>
 
           <div className="float-right">
@@ -449,17 +462,6 @@ export default function AddressDetailPage({ address }) {
                   title="Remove label"
               >
                   <X className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleToggleSave}
-                className={`btn ${
-                  isSaved ? "btn-primary" : "btn-outline"
-                } flex items-center gap-2`}
-              >
-                {isSaved
-                  ? (<> <BookmarkCheck className="w-4 h-4" /> Saved </>)
-                  : (<> <Bookmark className="w-4 h-4" /> Save </> )
-                }
               </button>
             </div>
           )}
