@@ -1,11 +1,18 @@
 import { extractFunctionSelector, findMatchingFunction, decodeInputData } from "../lib/AbiDecoder"
 import { LogHeader, DecodedParams } from "./TransactionsLogs"
 import { useState } from "react"
+import { ethers } from "ethers";
+import { convertSegmentPathToStaticExportFilename } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
 
 const COPY_FEEDBACK_DURATION = 500
 
 export default function DecodedTransactionInput({ inputData, abi, inline = false }) {
   const [expanded, setExpanded] = useState(true)
+  const iface = new ethers.Interface(abi);
+
+  if (!inputData || inputData === "0x") {
+    return null
+  }
 
   const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text)
@@ -13,12 +20,17 @@ export default function DecodedTransactionInput({ inputData, abi, inline = false
     setTimeout(() => setCopiedField(null), 500)
   }
 
-  if (!inputData || inputData === "0x") {
-    return null
-  }
-
   const selector = extractFunctionSelector(inputData)
   const matchingFunction = findMatchingFunction(abi, selector)
+
+  const decodedParamsReadable = iface.decodeFunctionData(selector, inputData)
+  const functionValues = iface.getFunction(selector);
+
+  const decodedValues = functionValues.inputs.map((input, index) => ({
+    name: input.name,
+    type: input.type,
+    value: decodedParamsReadable[index],
+  }));
 
   if (!matchingFunction) {
     return (
@@ -29,19 +41,7 @@ export default function DecodedTransactionInput({ inputData, abi, inline = false
     )
   }
 
-  const decodedParams = decodeInputData(inputData, matchingFunction)
-
-  const formatValue = (value, type) => {
-    if (type === "address") {
-      return value.slice(0, 6) + "..." + value.slice(-4)
-    }
-    if (value.length > 16) {
-      return value.slice(0, 10) + "..." + value.slice(-4)
-    }
-    return value
-  }
-
-  const functionSignature = `${matchingFunction.name}(${decodedParams.map((p) => formatValue(p.value, p.type)).join(", ")})`
+  const functionSignature = `${matchingFunction.name}(${decodedValues.map((p) => (p.value)).join(", ")})`
 
   if (inline) {
     return (
@@ -66,7 +66,7 @@ export default function DecodedTransactionInput({ inputData, abi, inline = false
         {expanded && (
           <div className="p-4 space-y-4 bg-background">
             <DecodedParams
-              params={decodedParams}
+              params={decodedValues}
               onCopy={copyToClipboard}
               copiedField={""}
               logIndex={0}
