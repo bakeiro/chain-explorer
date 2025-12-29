@@ -204,7 +204,10 @@ export default function TransactionDetailPage({ hash }) {
 
         {/* Decoded Input */}
         {contractABI && transaction.input && transaction.input !== "0x" && (
-          <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Decoded Input Data</h3>
+            <DecodedTransactionInput inputData={transaction.input} abi={contractABI} />
+          </div>
         )}
       </div>
 
@@ -254,21 +257,19 @@ export default function TransactionDetailPage({ hash }) {
   )
 
   const EventsContent = () => (
-    <div className="space-y-6">
-      {transaction.logs && transaction.logs.length > 0 ? (
-        <TransactionLogs logs={transaction.logs} abi={contractABI} />
-      ) : (
-        <div className="card p-12 text-center">
-          <p className="text-muted-foreground">No events emitted in this transaction</p>
-        </div>
-      )}
-    </div>
+    <TransactionLogs
+      logs={transaction.logs}
+      abi={contractABI}
+      getContractABI={getContractABI}
+      transactionTo={transaction.to}
+      onNavigate={navigate}
+    />
   )
 
   const tabs = [
     { id: "overview", label: "Overview", content: <OverviewContent /> },
     { id: "input-data", label: "Input Data", content: <InputDataContent /> },
-    { id: "events", label: "Events", content: <EventsContent /> },
+    { id: "events", label: `Events (${transaction?.logs?.length || 0})`, content: <EventsContent /> },
   ]
 
   return (
