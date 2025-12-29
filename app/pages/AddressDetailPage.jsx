@@ -6,15 +6,19 @@ import Skeleton from "../components/Skeleton";
 import Tabs from "../components/Tabs";
 import ContractInteraction from "../components/ContractInteraction";
 import DecodedTransactionInput from "../components/DecodedTransactionInput";
-import { fetchAddressByAddress, fetchAddressTransactions } from "../lib/BlockchainApi";
+import { fetchAddressByAddress, fetchAddressTransactions, fetchERC20Transfers, fetchInternalTransactions } from "../lib/BlockchainApi";
 import { parseABI } from "../lib/AbiDecoder";
-import { Copy, Edit2, FileCode, Tag, Wallet, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Bookmark, BookmarkCheck, Copy, Edit2, FileCode, GitBranch, Tag, Trash2, Wallet, X } from "lucide-react";
 
 export default function AddressDetailPage({ address }) {
   const [addressData, setAddressData] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [erc20Transfers, setErc20Transfers] = useState([]);
+  const [internalTxs, setInternalTxs] = useState([]);
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
+  const [isLoadingErc20, setIsLoadingErc20] = useState(true);
+  const [isLoadingInternal, setIsLoadingInternal] = useState(true);
   const {
     rpcUrl,
     getContractABI,
@@ -23,6 +27,9 @@ export default function AddressDetailPage({ address }) {
     getAddressLabel,
     saveAddressLabel,
     removeAddressLabel,
+    isAddressSaved,
+    saveAddress,
+    unsaveAddress,
   } = useBlockchain();
   const { navigate } = useRouter();
   const [copiedAddress, setCopiedAddress] = useState(false);
@@ -35,6 +42,8 @@ export default function AddressDetailPage({ address }) {
   const [label, setLabel] = useState("");
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [labelInput, setLabelInput] = useState("");
+
+  const isSaved = isAddressSaved(address);
 
   useEffect(() => {
     const savedABI = getContractABI(address);
@@ -77,6 +86,38 @@ export default function AddressDetailPage({ address }) {
     loadTransactions();
   }, [rpcUrl, address]);
 
+  // TODO: needed/used?
+  useEffect(() => {
+    const loadErc20Transfers = async () => {
+      if (!rpcUrl || !address) return;
+      try {
+        const data = await fetchERC20Transfers(rpcUrl, address);
+        setErc20Transfers(data);
+      } catch (error) {
+        console.error("Error fetching ERC20 transfers:", error);
+      } finally {
+        setIsLoadingErc20(false);
+      }
+    };
+    loadErc20Transfers();
+  }, [rpcUrl, address]);
+
+  // TODO: needed/used?
+  useEffect(() => {
+    const loadInternalTxs = async () => {
+      if (!rpcUrl || !address) return;
+      try {
+        const data = await fetchInternalTransactions(rpcUrl, address);
+        setInternalTxs(data);
+      } catch (error) {
+        console.error("Error fetching internal transactions:", error);
+      } finally {
+        setIsLoadingInternal(false);
+      }
+    };
+    loadInternalTxs();
+  }, [rpcUrl, address]);
+
   const copyToClipboard = (text, field = null) => {
     navigator.clipboard.writeText(text);
     if (field) {
@@ -85,6 +126,14 @@ export default function AddressDetailPage({ address }) {
     } else {
       setCopiedAddress(true);
       setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  };
+
+  const handleToggleSave = () => {
+    if (isSaved) {
+      unsaveAddress(address);
+    } else {
+      saveAddress(address);
     }
   };
 
@@ -374,20 +423,10 @@ export default function AddressDetailPage({ address }) {
                 }`}
               >
                 {addressData.isContract
-                  ? (
-                    <>
-                      <FileCode className="w-5 h-5" />
-                      Contract
-                    </>
-                  )
-                  : (
-                    <>
-                      <Wallet className="w-5 h-5" />
-                      Wallet
-                    </>
-                  )}
-              </span>
-            )}
+                  ? (<> <FileCode className="w-5 h-5" /> Contract </>)
+                  : (<> <Wallet className="w-5 h-5" /> Wallet </>)}
+                </span>
+              )}
           </div>
 
           <div className="float-right">
@@ -397,64 +436,75 @@ export default function AddressDetailPage({ address }) {
                   <Tag className="w-4 h-4 text-[oklch(0.65_0.25_151)]" />
                   <span className="text-foreground font-medium">{label}</span>
                 </div>
-                <button
-                  onClick={handleEditLabel}
-                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                  title="Edit label"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleRemoveLabel}
+              <button
+                onClick={handleEditLabel}
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                title="Edit label"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleRemoveLabel}
                   className="p-2 text-muted-foreground hover:text-red-500 transition-colors"
                   title="Remove label"
-                >
+              >
                   <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+              </button>
+              <button
+                onClick={handleToggleSave}
+                className={`btn ${
+                  isSaved ? "btn-primary" : "btn-outline"
+                } flex items-center gap-2`}
+              >
+                {isSaved
+                  ? (<> <BookmarkCheck className="w-4 h-4" /> Saved </>)
+                  : (<> <Bookmark className="w-4 h-4" /> Save </> )
+                }
+              </button>
+            </div>
+          )}
 
-            {showLabelInput && (
+          {showLabelInput && (
               <div className="mb-6 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={labelInput}
-                  onChange={(e) => setLabelInput(e.target.value)}
+              <input
+                type="text"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
                   placeholder="Enter a label or note for this address..."
                   className="input flex-1 max-w-md"
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveLabel()}
-                  autoFocus
-                />
+                onKeyDown={(e) => e.key === "Enter" && handleSaveLabel()}
+                autoFocus
+              />
                 <button onClick={handleSaveLabel} className="btn btn-primary">
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setShowLabelInput(false);
-                    setLabelInput("");
-                  }}
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setShowLabelInput(false);
+                  setLabelInput("");
+                }}
                   className="btn btn-outline"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
-            {!label && !showLabelInput && (
+          {!label && !showLabelInput && (
               <div className="mb-6">
-                <button
-                  onClick={() => setShowLabelInput(true)}
+            <button
+              onClick={() => setShowLabelInput(true)}
                   className="flex items-center gap-2 text-muted-foreground hover:text-[oklch(0.65_0.25_151)] transition-colors text-sm"
-                >
+            >
                   <Tag className="w-4 h-4" />
-                  Add label
-                </button>
-              </div>
-            )}
-          </div>
+              Add label
+            </button>
+                            </div>
+                          )}
+                        </div>
 
           <Tabs tabs={tabs} defaultTab="overview" />
-        </div>
+                </div>
       </main>
       <Footer />
     </div>
