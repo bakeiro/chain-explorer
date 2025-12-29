@@ -20,6 +20,7 @@ const RouterContext = createContext(null);
 const STORAGE_KEYS = {
   RPC_URL: "blockchain_rpc_url",
   CONTRACT_ABIS: "blockchain_contract_abis",
+  ADDRESS_LABELS: "blockchain_address_labels",
 };
 
 // Router Hook
@@ -48,6 +49,7 @@ function App() {
   // Blockchain state
   const [rpcUrl, setRpcUrlState] = useState(null);
   const [contractABIs, setContractABIs] = useState({});
+  const [addressLabels, setAddressLabels] = useState({});
 
   // Load saved data on mount
   useEffect(() => {
@@ -62,6 +64,15 @@ function App() {
         setContractABIs(JSON.parse(savedABIs));
       } catch (error) {
         console.error("Failed to parse saved ABIs:", error);
+      }
+    }
+
+    const savedLabels = localStorage.getItem(STORAGE_KEYS.ADDRESS_LABELS);
+    if (savedLabels) {
+      try {
+        setAddressLabels(JSON.parse(savedLabels));
+      } catch (error) {
+        console.error("Failed to parse saved labels:", error);
       }
     }
   }, []);
@@ -124,6 +135,32 @@ function App() {
     );
   };
 
+  const getAddressLabel = (address) => {
+    const normalizedAddress = address.toLowerCase();
+    return addressLabels[normalizedAddress] || null;
+  };
+
+  const saveAddressLabel = (address, label) => {
+    const normalizedAddress = address.toLowerCase();
+    const updatedLabels = { ...addressLabels, [normalizedAddress]: label };
+    setAddressLabels(updatedLabels);
+    localStorage.setItem(
+      STORAGE_KEYS.ADDRESS_LABELS,
+      JSON.stringify(updatedLabels),
+    );
+  };
+
+  const removeAddressLabel = (address) => {
+    const normalizedAddress = address.toLowerCase();
+    const updatedLabels = { ...addressLabels };
+    delete updatedLabels[normalizedAddress];
+    setAddressLabels(updatedLabels);
+    localStorage.setItem(
+      STORAGE_KEYS.ADDRESS_LABELS,
+      JSON.stringify(updatedLabels),
+    );
+  };
+
   const routerValue = {
     currentPage,
     pageParams,
@@ -139,6 +176,9 @@ function App() {
     getContractABI,
     saveContractABI,
     removeContractABI,
+    getAddressLabel,
+    saveAddressLabel,
+    removeAddressLabel,
   };
 
   // Show RPC connector if not connected

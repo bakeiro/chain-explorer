@@ -1,4 +1,5 @@
 import { Copy, ChevronDown, ChevronUp } from "lucide-react"
+import { Interface } from "ethers"
 import { useState } from "react"
 
 export default function TransactionLogs({ logs, abi }) {
@@ -19,63 +20,54 @@ export default function TransactionLogs({ logs, abi }) {
   }
 
   const decodeEventData = (log) => {
-    if (!abi) return null
+    // TODO: check if correct ABI
+    if (!abi || !Array.isArray(abi) || abi.length === 0) return null
 
-    const eventSignature = log.topics?.[0]
-    if (!eventSignature) return null
+    try {
+      // Crear la Interface de ethers con el ABI
+      const iface = new Interface(abi)
 
-    // Buscar el evento en el ABI
-    const event = abi.find((item) => {
-      if (item.type !== "event") return false
-      const signature = `${item.name}(${item.inputs.map((i) => i.type).join(",")})`
-      // Simple hash comparison (en producción usarías keccak256 real)
-      return true
-    })
+      const parsedLog = iface.parseLog(log)
 
-    if (!event) return null
-
-    const decodedParams = []
-    let topicIndex = 1
-    let dataOffset = 0
-
-    event.inputs.forEach((input, idx) => {
-      let value
-      if (input.indexed && log.topics?.[topicIndex]) {
-        // Los parámetros indexados están en topics
-        value = log.topics[topicIndex]
-        if (input.type === "address") {
-          value = "0x" + value.slice(26)
+      if (!parsedLog) {
+        return {
+          name: eventName,
+          signature: "",
+          params: "",
         }
-        topicIndex++
-      } else if (log.data && log.data !== "0x") {
-        // Los no indexados están en data
-        const dataWithoutPrefix = log.data.slice(2)
-        const paramData = dataWithoutPrefix.slice(dataOffset, dataOffset + 64)
-
-        if (input.type === "address") {
-          value = "0x" + paramData.slice(24)
-        } else if (input.type.startsWith("uint") || input.type.startsWith("int")) {
-          value = Number.parseInt(paramData, 16).toString()
-        } else if (input.type === "bool") {
-          value = Number.parseInt(paramData, 16) === 1 ? "true" : "false"
-        } else {
-          value = "0x" + paramData
-        }
-
-        dataOffset += 64
       }
 
-      decodedParams.push({
-        name: input.name || `param${idx}`,
-        type: input.type,
-        indexed: input.indexed || false,
-        value: value || "N/A",
-      })
-    })
+      // Obtener la definición del evento del ABI para saber qué parámetros están indexados
+      const eventFragment = parsedLog.fragment
 
-    return {
-      name: event.name,
-      params: decodedParams,
+      // Formatear los parámetros decodificados
+      const decodedParams = eventFragment.inputs.map((input, idx) => {
+        let value = parsedLog.args[idx]
+
+        // Convertir BigInt a string para mostrar
+        if (typeof value === "bigint") {
+          value = value.toString()
+        } else if (value && typeof value === "object" && value.toString) {
+          value = value.toString()
+        }
+
+        return {
+          name: input.name || `param${idx}`,
+          type: input.type,
+          indexed: input.indexed || false,
+          value: value ?? "N/A",
+        }
+      })
+
+      return {
+        name: parsedLog.name,
+        signature: parsedLog.signature,
+        params: decodedParams,
+      }
+    } catch (error) {
+      // Si no se puede decodificar, retornar null silenciosamente
+      console.log("[v0] Could not decode event:", error.message)
+      return null
     }
   }
 
@@ -119,7 +111,7 @@ export default function TransactionLogs({ logs, abi }) {
                 <div className="p-4 space-y-4 bg-background">
                   {decodedEvent && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">Decoded Parameters</h4>
+                      <h4 className="text-sm font-medium text-muted-foreground">Decoded input parameters</h4>
                       <div className="space-y-2">
                         {decodedEvent.params.map((param, paramIdx) => (
                           <div

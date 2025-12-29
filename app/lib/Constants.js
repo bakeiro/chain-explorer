@@ -37,4 +37,5 @@ export const RPC_METHODS = {
   GET_CODE: "eth_getCode",
   GET_TRANSACTION_RECEIPT: "eth_getTransactionReceipt",
   GET_TRANSACTION_COUNT: "eth_getTransactionCount",
+  GET_LOGS: "eth_getLogs",
 }

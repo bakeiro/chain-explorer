@@ -94,6 +94,10 @@ class RPCClient {
     return this.call(RPC_METHODS.GET_TRANSACTION_RECEIPT, [txHash])
   }
 
+  async getLogs(filter) {
+    return this.call(RPC_METHODS.GET_LOGS, [filter])
+  }
+
   async getTransactionCount(address) {
     return this.call(RPC_METHODS.GET_TRANSACTION_COUNT, [address, "latest"])
   }
