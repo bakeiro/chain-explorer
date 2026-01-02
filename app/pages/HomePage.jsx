@@ -29,7 +29,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background text-foreground">
       <NavBar />
 
-      <main className="container mx-auto px-4 lg:px-8 py-8 space-y-8">
+      <main className="container mx-auto px-4 lg:px-24 py-8 space-y-8">
         <div className="max-w-3xl mx-auto">
           <div className="text-center space-y-4 mb-8">
             <h1 className="text-4xl md:text-5xl font-bold text-balance">Blockchain Explorer</h1>

@@ -49,6 +49,7 @@ export const RPC_METHODS = {
   GET_TRANSACTION_COUNT: "eth_getTransactionCount",
   GET_LOGS: "eth_getLogs",
   DEBUG_TRACE_TRANSACTION: "debug_traceTransaction",
+  CALL: "eth_call",
 }
 
 // ERC20 event topics

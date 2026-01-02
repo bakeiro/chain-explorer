@@ -109,7 +109,7 @@ export default function BlockDetailPage({ blockNumber }) {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <NavBar />
 
-      <main className="container mx-auto px-4 lg:px-8 py-8 flex-1">
+      <main className="container mx-auto px-4 lg:px-24 py-8 flex-1">
         <button onClick={goBack} className="btn btn-ghost mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back

@@ -8,7 +8,8 @@ import DecodedTransactionInput from "../components/DecodedTransactionInput"
 import TransactionLogs from "../components/TransactionsLogs"
 import { fetchTransactionById } from "../lib/BlockchainApi"
 import { parseABI } from "../lib/AbiDecoder"
-import { ArrowLeft, Copy, FileCode, Trash2 } from "lucide-react"
+import { ArrowLeft, Copy, FileCode, Trash2, Tag } from "lucide-react"
+import AddressWithLabel from "../components/AddressWithLabel"
 
 export default function TransactionDetailPage({ hash }) {
   const [transaction, setTransaction] = useState(null)
@@ -18,7 +19,7 @@ export default function TransactionDetailPage({ hash }) {
   const [abiInput, setAbiInput] = useState("")
   const [abiError, setAbiError] = useState("")
   const [contractABI, setContractABI] = useState(null)
-  const { rpcUrl, getContractABI, saveContractABI, removeContractABI } = useBlockchain()
+  const { rpcUrl, getContractABI, saveContractABI, removeContractABI, getAddressLabel } = useBlockchain()
   const { goBack, navigate } = useRouter()
 
   useEffect(() => {
@@ -115,12 +116,9 @@ export default function TransactionDetailPage({ hash }) {
         <div className="flex justify-between items-start py-3 border-b border-border">
           <span className="text-sm font-medium text-muted-foreground">From</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("address-detail", { address: transaction.from })}
-              className="text-sm font-mono text-[oklch(0.65_0.25_151)] hover:underline cursor-pointer"
-            >
-              {transaction.from}
-            </button>
+            <span className="inline-flex items-center gap-2 flex-wrap">
+              <AddressWithLabel address={transaction.from} truncate={true} />
+            </span>
             <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.from, "from")}>
               <Copy
                 className={`h-3 w-3 ${copiedField === "from" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
@@ -135,19 +133,14 @@ export default function TransactionDetailPage({ hash }) {
             {transaction.to === "Contract Creation" ? (
               <span className="text-sm text-muted-foreground">Contract Creation</span>
             ) : (
-              <>
-                <button
-                  onClick={() => navigate("address-detail", { address: transaction.to })}
-                  className="text-sm font-mono text-[oklch(0.65_0.25_151)] hover:underline cursor-pointer"
-                >
-                  {transaction.to}
-                </button>
-                <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.to, "to")}>
-                  <Copy
-                    className={`h-3 w-3 ${copiedField === "to" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
-                  />
-                </button>
-              </>
+              <AddressWithLabel address={transaction.to} truncate={true} />
+            )}
+            {transaction.to !== "Contract Creation" && (
+              <button className="btn btn-ghost btn-icon" onClick={() => copyToClipboard(transaction.to, "to")}>
+                <Copy
+                  className={`h-3 w-3 ${copiedField === "to" ? "text-[oklch(0.65_0.25_151)]" : "text-muted-foreground"}`}
+                />
+              </button>
             )}
           </div>
         </div>
@@ -166,8 +159,8 @@ export default function TransactionDetailPage({ hash }) {
         </div>
 
         <div className="flex justify-between items-start py-3">
-          <span className="text-sm font-medium text-muted-foreground">Gas Price</span>
-          <span className="text-sm">{transaction.gasPrice}</span>
+          <span className="text-sm font-medium text-muted-foreground">Timestamp</span>
+          <span className="text-sm">{transaction.timestamp}</span>
         </div>
       </div>
     </div>
@@ -193,8 +186,8 @@ export default function TransactionDetailPage({ hash }) {
             <div className="bg-muted/50 rounded-md p-4 border border-border">
               <code className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
                 {transaction.input}
-              </code>
-            </div>
+          </code>
+        </div>
           ) : (
             <p className="text-muted-foreground text-sm">No input data for this transaction</p>
           )}
@@ -218,7 +211,7 @@ export default function TransactionDetailPage({ hash }) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold">Contract ABI</h3>
+            <h3 className="text-lg font-semibold">Contract ABI</h3>
                 <p className="text-sm text-muted-foreground">Add an ABI to decode the input data</p>
               </div>
 
@@ -227,30 +220,30 @@ export default function TransactionDetailPage({ hash }) {
                 <Trash2 className="w-3 h-3 mr-2" />
                 Remove ABI
               </button>
-              )}
-            </div>
+            )}
+          </div>
 
             {!contractABI && (
               <div className="space-y-4 pt-4 border-t border-border">
-                <textarea
+              <textarea
                   placeholder='[{"type":"function","name":"transfer","inputs":[...]}]'
-                  value={abiInput}
-                  onChange={(e) => setAbiInput(e.target.value)}
+                value={abiInput}
+                onChange={(e) => setAbiInput(e.target.value)}
                   className="textarea min-h-[200px] font-mono text-sm"
-                />
-                {abiError && <p className="text-sm text-destructive">{abiError}</p>}
+              />
+              {abiError && <p className="text-sm text-destructive">{abiError}</p>}
                 <button onClick={handleParseABI} className="btn btn-primary btn-md">
                   Parse and Save ABI
-                </button>
-              </div>
-            )}
+              </button>
+            </div>
+          )}
 
-            {contractABI && (
+          {contractABI && (
               <div className="pt-4 border-t border-border">
                 <p className="text-sm text-[oklch(0.65_0.25_151)]">ABI loaded successfully</p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
         </div>
       )}
     </div>
@@ -276,11 +269,11 @@ export default function TransactionDetailPage({ hash }) {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <NavBar />
 
-      <main className="container mx-auto px-4 lg:px-8 py-8 flex-1">
+      <main className="container mx-auto px-4 lg:px-24 py-8 flex-1">
         <button onClick={goBack} className="btn btn-ghost mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </button>
+            Back
+          </button>
 
         {isLoading ? (
           <div className="space-y-6">
@@ -304,9 +297,9 @@ export default function TransactionDetailPage({ hash }) {
             <div>
               <h1 className="text-3xl font-bold mb-2">Transaction Details</h1>
               <p className="text-muted-foreground">View detailed information about this transaction</p>
-            </div>
+        </div>
 
-            <Tabs tabs={tabs} defaultTab="overview" />
+        <Tabs tabs={tabs} defaultTab="overview" />
           </div>
         ) : (
           <div className="card p-12 text-center">

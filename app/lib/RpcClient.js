@@ -130,6 +130,10 @@ class RPCClient {
       }
     }
   }
+
+  async ethCall(to, data) {
+    return this.call(RPC_METHODS.CALL, [{ to, data }, "latest"])
+  }
 }
 
 export default RPCClient
