@@ -2,6 +2,7 @@ import { useState, useCallback } from "react"
 import { Copy, ChevronDown, ChevronUp, AlertCircle } from "lucide-react"
 import { Interface } from "ethers"
 import { truncateAddress } from "../lib/Formatters"
+import AddressWithLabel from "./AddressWithLabel"
 
 const COPY_FEEDBACK_DURATION = 500
 
@@ -91,7 +92,12 @@ export function DecodedParams({ params, onCopy, copiedField, logIndex }) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <code className="text-sm font-mono break-all">{param.value}</code>
+              {param.type === "address" && (
+                <AddressWithLabel address={param.value} truncateAddress={false} />
+              )}
+              {param.type !== "address" && (
+                <code className="text-sm font-mono break-all">{param.value}</code>
+              )}
               <CopyButton
                 value={param.value}
                 field={`log-${logIndex}-param-${paramIdx}`}
