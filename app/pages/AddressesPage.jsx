@@ -41,7 +41,7 @@ export default function AddressesPage() {
                 placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-lg pl-14 pr-4 w-full"
+                className="input input-lg pl-4 pr-4 w-full"
               />
             </div>
           </form>

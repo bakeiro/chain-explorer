@@ -75,7 +75,7 @@ export default function TransactionsPage() {
                 placeholder="Search by transaction hash..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-lg pl-12 pr-4 w-full"
+                className="input input-lg pl-4 pr-4 w-full"
               />
             </div>
           </form>

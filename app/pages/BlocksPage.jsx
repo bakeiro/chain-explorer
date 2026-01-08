@@ -73,7 +73,7 @@ export default function BlocksPage() {
                 placeholder="Search by block number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-lg pl-14 pr-4 w-full"
+                className="input input-lg pl-4 pr-4 w-full"
               />
             </div>
           </form>

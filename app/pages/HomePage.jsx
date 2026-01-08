@@ -45,7 +45,7 @@ export default function HomePage() {
                 placeholder="Search by transaction hash, block number, or address..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-lg pl-14 pr-4 w-full border-[oklch(0.65_0.25_151)]/30 focus:border-[oklch(0.65_0.25_151)] shadow-sm shadow-[oklch(0.65_0.25_151)]/10"
+                className="input input-lg pl-4 pr-4 w-full"
               />
             </div>
           </form>
