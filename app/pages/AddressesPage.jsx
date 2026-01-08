@@ -110,7 +110,7 @@ export default function AddressesPage() {
                         <div className="flex flex-col gap-1">
                           <button
                             onClick={() => navigate("address-detail", { address: addr })}
-                            className="font-mono text-sm text-[oklch(0.65_0.25_151)] hover:underline text-left"
+                            className="cursor-pointer font-mono text-sm text-[oklch(0.65_0.25_151)] hover:underline text-left"
                           >
                             {addr}
                           </button>

@@ -394,7 +394,7 @@ export default function AddressDetailPage({ address }) {
               Address Details
             </h1>
 
-            <div>
+            <div className="flex">
               {addressData && (
                 <span
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-lg font-semibold ${
@@ -411,10 +411,10 @@ export default function AddressDetailPage({ address }) {
 
               <button
                 onClick={handleToggleSave}
-                className={`btn ml-2 px-2 py-3 ${isSaved ? "btn-primary" : "btn-outline"} flex items-center gap-2`}
+                className={`text-foreground border btn ml-2 px-2 py-3 ${isSaved ? "bg-[oklch(0.65_0.25_151)]/10 border-[oklch(0.65_0.25_151)]/30 text-[oklch(0.65_0.25_151)]" : "bg-muted"} flex items-center gap-2`}
               >
                 {isSaved
-                  ? (<BookmarkCheck className="w-5 h-5" />)
+                  ? (<BookmarkCheck className="w-5 h-5 text-[oklch(0.65_0.25_151)]" />)
                   : (<Bookmark className="w-5 h-5" />)
                 }
               </button>
