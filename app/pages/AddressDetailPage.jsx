@@ -236,7 +236,7 @@ export default function AddressDetailPage({ address }) {
         <h3 className="card-title text-lg">Transaction History</h3>
           <button onClick={handleRefreshTransactions} disabled={isLoadingTxs} className="btn btn-outline btn-sm">
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingTxs ? "animate-spin" : ""}`} />
-            Refresh
+            {isLoadingTxs ? "Loading" : "Refresh"}
           </button>
         </div>
       </div>

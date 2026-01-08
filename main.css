@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* @custom-variant dark (&:is(.dark *)); */
 
 /* Definir colores OKLCH directamente en @theme para que Tailwind los reconozca */
 @theme inline {
@@ -132,6 +132,11 @@
   @apply placeholder:text-muted-foreground;
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary;
   @apply disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+/* Añadir padding-left al placeholder para inputs con icono */
+.input.pl-14::placeholder {
+  padding-left: 0.5rem;
 }
 
 .input-lg {

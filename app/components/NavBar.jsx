@@ -1,11 +1,10 @@
- 
-
-import { useBlockchain, useRouter } from "../App"
-import { Blocks, Plug } from "lucide-react"
+import { useBlockchain, useRouter, useTheme } from "../App"
+import { Blocks, Plug, Sun, Moon } from "lucide-react"
 
 export default function NavBar() {
   const { disconnect } = useBlockchain()
   const { currentPage, navigate } = useRouter()
+  const { isDark, toggleTheme } = useTheme()
 
   const isActive = (page) => {
     if (page === "home") return currentPage === "home"
@@ -30,9 +29,7 @@ export default function NavBar() {
             <button
               onClick={() => navigate("transactions")}
               className={`text-sm transition-colors cursor-pointer ${
-                isActive("transactions")
-                  ? "text-white font-medium"
-                  : "text-muted-foreground hover:text-foreground"
+                isActive("transactions") ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Transactions
@@ -40,9 +37,7 @@ export default function NavBar() {
             <button
               onClick={() => navigate("blocks")}
               className={`text-sm transition-colors cursor-pointer ${
-                isActive("blocks")
-                  ? "text-white font-medium"
-                  : "text-muted-foreground hover:text-foreground"
+                isActive("blocks") ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Blocks
@@ -50,9 +45,7 @@ export default function NavBar() {
             <button
               onClick={() => navigate("addresses")}
               className={`text-sm transition-colors cursor-pointer ${
-                isActive("addresses")
-                  ? "text-white font-medium"
-                  : "text-muted-foreground hover:text-foreground"
+                 isActive("addresses") ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Addresses
@@ -60,6 +53,17 @@ export default function NavBar() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-md hover:bg-accent transition-colors cursor-pointer"
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDark
+                ? (<Sun className="w-4 h-4 text-muted-foreground hover:text-foreground" />)
+                : (<Moon className="w-4 h-4 text-muted-foreground hover:text-foreground" />)
+              }
+            </button>
+            
             <span className="text-xs hidden md:flex items-center rounded-full border px-2.5 py-0.5 font-semibold border-[oklch(0.65_0.25_151)]/30 bg-[oklch(0.65_0.25_151)]/15 text-[oklch(0.65_0.25_151)]">
               <div className="w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse bg-[oklch(0.65_0.25_151)]" />
               Connected

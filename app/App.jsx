@@ -1,4 +1,5 @@
 import "../main.css";
+import "../globals.css";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./hooks/useRpcQuery";
@@ -18,10 +19,12 @@ import RpcConnector from "./components/RpcConnector";
 // Contexts
 import { RouterProvider, useRouter } from "./contexts/RouterContext";
 import { BlockchainProvider, useBlockchain } from "./contexts/BlockchainContext";
+import { ThemeProvider } from "./contexts/ThemeContext"
 
 // Re-export hooks for external use
 export { useRouter } from "./contexts/RouterContext";
 export { useBlockchain } from "./contexts/BlockchainContext";
+export { useTheme } from "./contexts/ThemeContext"
 
 // Page component mapping
 const PAGES = {
@@ -50,7 +53,7 @@ function AppContent() {
 
   if (!isConnected) {
     return (
-      <div className="dark min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <RpcConnector />
       </div>
     );
@@ -60,7 +63,7 @@ function AppContent() {
   const pageProps = getPageProps(currentPage, pageParams);
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <PageComponent {...pageProps} />
     </div>
   );
@@ -69,11 +72,13 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BlockchainProvider>
-        <RouterProvider>
-          <AppContent />
-        </RouterProvider>
-      </BlockchainProvider>
+       <ThemeProvider>
+        <BlockchainProvider>
+          <RouterProvider>
+            <AppContent />
+          </RouterProvider>
+        </BlockchainProvider>
+       </ThemeProvider>
     </QueryClientProvider>
   );
 }
