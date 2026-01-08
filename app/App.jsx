@@ -1,5 +1,8 @@
 import "../main.css";
 
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./hooks/useRpcQuery";
+
 // Pages
 import HomePage from "./pages/HomePage";
 import TransactionsPage from "./pages/TransactionsPage";
@@ -65,11 +68,13 @@ function AppContent() {
 
 function App() {
   return (
-    <BlockchainProvider>
-      <RouterProvider>
-        <AppContent />
-      </RouterProvider>
-    </BlockchainProvider>
+    <QueryClientProvider client={queryClient}>
+      <BlockchainProvider>
+        <RouterProvider>
+          <AppContent />
+        </RouterProvider>
+      </BlockchainProvider>
+    </QueryClientProvider>
   );
 }
 

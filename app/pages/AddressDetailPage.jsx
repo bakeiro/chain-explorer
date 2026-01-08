@@ -8,17 +8,16 @@ import ContractInteraction from "../components/ContractInteraction";
 import DecodedTransactionInput from "../components/DecodedTransactionInput";
 import { fetchAddressByAddress, fetchAddressTransactions, fetchERC20Transfers, fetchInternalTransactions } from "../lib/BlockchainApi";
 import { parseABI } from "../lib/AbiDecoder";
-import { ArrowDownLeft, ArrowUpRight, Bookmark, BookmarkCheck, Copy, Edit2, FileCode, GitBranch, Tag, Trash2, Wallet, X } from "lucide-react";
+import { queryClient } from "../hooks/useRpcQuery";
+import { Bookmark, BookmarkCheck, Copy, Edit2, FileCode, RefreshCw, Tag, Wallet, X } from "lucide-react";
 
 export default function AddressDetailPage({ address }) {
   const [addressData, setAddressData] = useState(null);
   const [transactions, setTransactions] = useState([]);
-  const [erc20Transfers, setErc20Transfers] = useState([]);
-  const [internalTxs, setInternalTxs] = useState([]);
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
-  const [isLoadingErc20, setIsLoadingErc20] = useState(true);
-  const [isLoadingInternal, setIsLoadingInternal] = useState(true);
+  // const [isRefreshingTxs, setIsRefreshingTxs] = useState(false)
+
   const {
     rpcUrl,
     getContractABI,
@@ -33,17 +32,26 @@ export default function AddressDetailPage({ address }) {
   } = useBlockchain();
   const { navigate } = useRouter();
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [parsedABI, setParsedABI] = useState(null);
-  const [showABIInput, setShowABIInput] = useState(false);
+  const [parsedABI, setParsedABI] = useState(null);  
   const [abiInput, setAbiInput] = useState("");
-  const [abiError, setAbiError] = useState("");
   const [copiedField, setCopiedField] = useState(null);
 
   const [label, setLabel] = useState("");
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [labelInput, setLabelInput] = useState("");
-
   const isSaved = isAddressSaved(address);
+
+  const loadTransactions = async () => {
+    if (!rpcUrl || !address) return
+    try {
+      const data = await fetchAddressTransactions(rpcUrl, address)
+      setTransactions(data)
+    } catch (error) {
+      console.error("Error fetching transactions:", error)
+    } finally {
+      setIsLoadingTxs(false)
+    }
+  }
 
   useEffect(() => {
     const savedABI = getContractABI(address);
@@ -72,51 +80,14 @@ export default function AddressDetailPage({ address }) {
   }, [rpcUrl, address]);
 
   useEffect(() => {
-    const loadTransactions = async () => {
-      if (!rpcUrl || !address) return;
-      try {
-        const data = await fetchAddressTransactions(rpcUrl, address);
-        setTransactions(data);
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-      } finally {
-        setIsLoadingTxs(false);
-      }
-    };
     loadTransactions();
   }, [rpcUrl, address]);
 
-  // TODO: needed/used?
-  useEffect(() => {
-    const loadErc20Transfers = async () => {
-      if (!rpcUrl || !address) return;
-      try {
-        const data = await fetchERC20Transfers(rpcUrl, address);
-        setErc20Transfers(data);
-      } catch (error) {
-        console.error("Error fetching ERC20 transfers:", error);
-      } finally {
-        setIsLoadingErc20(false);
-      }
-    };
-    loadErc20Transfers();
-  }, [rpcUrl, address]);
-
-  // TODO: needed/used?
-  useEffect(() => {
-    const loadInternalTxs = async () => {
-      if (!rpcUrl || !address) return;
-      try {
-        const data = await fetchInternalTransactions(rpcUrl, address);
-        setInternalTxs(data);
-      } catch (error) {
-        console.error("Error fetching internal transactions:", error);
-      } finally {
-        setIsLoadingInternal(false);
-      }
-    };
-    loadInternalTxs();
-  }, [rpcUrl, address]);
+  const handleRefreshTransactions = () => {
+    setIsLoadingTxs(true)
+    queryClient.invalidateQueries({ queryKey: ["rpc", rpcUrl] })
+    loadTransactions()
+  }
 
   const copyToClipboard = (text, field = null) => {
     navigator.clipboard.writeText(text);
@@ -137,6 +108,7 @@ export default function AddressDetailPage({ address }) {
     }
   };
 
+  /*
   const handleParseABI = () => {
     try {
       setAbiError("");
@@ -149,11 +121,12 @@ export default function AddressDetailPage({ address }) {
       setAbiError(err instanceof Error ? err.message : "Failed to parse ABI");
     }
   };
-
+  
   const handleRemoveABI = () => {
     removeContractABI(address);
     setParsedABI(null);
   };
+  */
 
   const handleSaveLabel = () => {
     if (labelInput.trim()) {
@@ -258,8 +231,14 @@ export default function AddressDetailPage({ address }) {
 
   const TransactionsContent = () => (
     <div className="card">
-      <div className="card-header">
+      <div className="card-header w-[100%] !pt-0">
+        <div className="flex items-center justify-between">
         <h3 className="card-title text-lg">Transaction History</h3>
+          <button onClick={handleRefreshTransactions} disabled={isLoadingTxs} className="btn btn-outline btn-sm">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingTxs ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
       <div className="card-content">
         {isLoadingTxs
@@ -283,7 +262,7 @@ export default function AddressDetailPage({ address }) {
                   <div
                     onClick={() =>
                       navigate("transaction-detail", { hash: tx.hash })}
-                    className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                      className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0 space-y-2">
@@ -493,20 +472,19 @@ export default function AddressDetailPage({ address }) {
           )}
 
           {!label && !showLabelInput && (
-              <div className="mb-6">
-            <button
-              onClick={() => setShowLabelInput(true)}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-[oklch(0.65_0.25_151)] transition-colors text-sm"
-            >
-                  <Tag className="w-4 h-4" />
-              Add label
-            </button>
-                            </div>
-                          )}
-                        </div>
+            <div className="mb-6">
+              <button
+                onClick={() => setShowLabelInput(true)}
+                className="flex items-center gap-2 text-muted-foreground hover:text-[oklch(0.65_0.25_151)] transition-colors text-sm"
+              >
+                <Tag className="w-4 h-4" /> Add label
+              </button>
+            </div>
+          )}
+          </div>
 
           <Tabs tabs={tabs} defaultTab="overview" />
-                </div>
+        </div>
       </main>
       <Footer />
     </div>

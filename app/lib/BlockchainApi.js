@@ -1,4 +1,4 @@
-import RPCClient from "./RpcClient"
+import { createCachedRPCClient } from "../hooks/useRpcQuery"
 import {
   hexToDecimal,
   decimalToHex,
@@ -21,7 +21,7 @@ import { BLOCKCHAIN_CONFIG, ERC20_TOPICS, INTERNAL_TX_TYPES, TX_DIRECTION } from
 
 // Factory
 function createRPCClient(rpcUrl) {
-  return new RPCClient(rpcUrl)
+  return new createCachedRPCClient(rpcUrl)
 }
 
 // Parsers
