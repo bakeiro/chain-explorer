@@ -68,7 +68,7 @@ export default function NavBar() {
               <div className="w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse bg-[oklch(0.65_0.25_151)]" />
               Connected
             </span>
-            <button onClick={disconnect} className="btn btn-outline btn-sm">
+            <button onClick={disconnect} className="cursor-pointer btn btn-outline btn-sm">
               <Plug className="w-3 h-3 mr-1.5" />
               Disconnect
             </button>

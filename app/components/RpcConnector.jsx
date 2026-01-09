@@ -39,7 +39,7 @@ export default function RpcConnector() {
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-[oklch(0.65_0.25_151)] rounded-xl flex items-center justify-center mx-auto shadow-lg shadow-[oklch(0.65_0.25_151)]/20">
+          <div className="w-16 h-16 bg-[oklch(0.65_0.25_151)] rounded-xl flex items-center justify-center mx-auto shadow-md shadow-[oklch(0.65_0.25_151)]/20">
             <Blocks className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold ">
@@ -69,7 +69,7 @@ export default function RpcConnector() {
                   handleConnect()
                 }
               }}
-              className="input input-lg w-full"
+              className="input input-md w-full"
             />
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
@@ -77,7 +77,7 @@ export default function RpcConnector() {
           <button
             onClick={handleConnect}
             disabled={!inputUrl.trim()}
-            className="btn btn-primary btn-lg w-full shadow-lg shadow-[oklch(0.65_0.25_151)]/20"
+            className="btn cursor-pointer btn-primary btn-md w-full shadow-md shadow-[oklch(0.65_0.25_151)]/20"
           >
             <Plug className="w-4 h-4 mr-2" />
             Connect to Node
