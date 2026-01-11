@@ -15,7 +15,6 @@ import {
   isContractCode,
   normalizeAddress,
   addressesMatch,
-  padAddressToBytes32,
 } from "./Formatters"
 import { BLOCKCHAIN_CONFIG, ERC20_TOPICS, INTERNAL_TX_TYPES, TX_DIRECTION } from "./Constants"
 
@@ -338,102 +337,94 @@ export async function fetchAddressTransactions(rpcUrl, address, options = {}) {
   }
 }
 
-export async function fetchERC20Transfers(rpcUrl, address) {
+export async function fetchERC20Transfers(rpcUrl, address, options = {}) {
   const client = createRPCClient(rpcUrl)
+  const {
+    limit = BLOCKCHAIN_CONFIG.DEFAULT_TX_LOAD_LIMIT,
+    maxBlocks = BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS,
+  } = options
 
   try {
-    const latestBlockNumber = await getLatestBlockNumber(client)
-    const fromBlock = Math.max(0, latestBlockNumber - BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS)
-    const paddedAddress = padAddressToBytes32(address)
-
-    // Fetch transfers where address is sender or receiver
-    const [logsFrom, logsTo] = await Promise.all([
-      client.getLogs({
-        fromBlock: decimalToHex(fromBlock),
-        toBlock: "latest",
-        topics: [ERC20_TOPICS.TRANSFER, paddedAddress, null],
-      }),
-      client.getLogs({
-        fromBlock: decimalToHex(fromBlock),
-        toBlock: "latest",
-        topics: [ERC20_TOPICS.TRANSFER, null, paddedAddress],
-      }),
-    ])
+    const { transactions } = await fetchAddressTransactions(rpcUrl, address, { limit, maxBlocks })
 
     const transfers = []
-    const allLogs = [...logsFrom, ...logsTo]
+    const addressLower = address.toLowerCase()
+    let reachedLimit = false
 
-    for (const log of allLogs) {
-      const blockNumber = hexToDecimal(log.blockNumber)
-      const blockTimestamp = await getBlockTimestamp(client, blockNumber)
+    const batchSize = 10
+    for (let i = 0; i < transactions.length && !reachedLimit; i += batchSize) {
+      const batch = transactions.slice(i, i + batchSize)
 
-      const from = "0x" + log.topics[1].slice(26)
-      const to = "0x" + log.topics[2].slice(26)
-      const value = hexToDecimal(log.data)
-      const isOutgoing = addressesMatch(from, address)
+      const receipts = await Promise.all(batch.map((tx) => client.getTransactionReceipt(tx.hash).catch(() => null)))
 
-      transfers.push({
-        hash: log.transactionHash,
-        logIndex: hexToDecimal(log.logIndex),
-        blockNumber,
-        tokenAddress: log.address,
-        from,
-        to,
-        value: value.toString(),
-        formattedValue: formatTokenValue(value),
-        type: isOutgoing ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
-        timestamp: formatTimestamp(blockTimestamp),
-        timeAgo: getTimeAgo(blockTimestamp),
-      })
+      for (let j = 0; j < receipts.length; j++) {
+        const receipt = receipts[j]
+        const tx = batch[j]
+
+        if (!receipt?.logs) continue
+
+        for (const log of receipt.logs) {
+          if (!log.topics || log.topics.length < 3) continue
+
+          if (log.topics[0]?.toLowerCase() !== ERC20_TOPICS.TRANSFER.toLowerCase()) continue
+
+          const from = "0x" + log.topics[1].slice(26).toLowerCase()
+          const to = "0x" + log.topics[2].slice(26).toLowerCase()
+
+          if (from !== addressLower && to !== addressLower) continue
+
+          let value = "0"
+          if (log.data && log.data !== "0x") {
+            value = hexToDecimal(log.data).toString()
+          }
+
+          const isOutgoing = from === addressLower
+
+          transfers.push({
+            hash: tx.hash,
+            logIndex: hexToDecimal(log.logIndex),
+            blockNumber: tx.blockNumber,
+            tokenAddress: log.address,
+            from,
+            to,
+            value,
+            formattedValue: formatTokenValue(value),
+            type: isOutgoing ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
+            timestamp: tx.timestamp,
+            timeAgo: tx.timeAgo,
+          })
+
+          if (transfers.length >= limit) {
+            reachedLimit = true
+            break
+          }
+        }
+
+        if (reachedLimit) break
+      }
     }
 
-    // Remove duplicates and sort
-    return transfers
-      .filter((t, i, self) => i === self.findIndex((x) => x.hash === t.hash && x.logIndex === t.logIndex))
-      .sort((a, b) => b.blockNumber - a.blockNumber)
-      .slice(0, BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST)
+    transfers.sort((a, b) => b.blockNumber - a.blockNumber)
+
+    return {
+      transfers,
+      metadata: {
+        total: transfers.length,
+        reachedLimit,
+        transactionsScanned: transactions.length,
+      },
+    }
   } catch (error) {
     console.error("Error fetching ERC20 transfers:", error)
-    return []
-  }
-}
-
-function extractInternalTxsFromTrace(trace, parentTxHash, targetAddress, depth = 0) {
-  const internalTxs = []
-  if (!trace) return internalTxs
-
-  const from = normalizeAddress(trace.from)
-  const to = normalizeAddress(trace.to)
-  const target = normalizeAddress(targetAddress)
-
-  // Check if this call involves the target address (excluding depth 0)
-  if (depth > 0 && (from === target || to === target)) {
-    const value = trace.value ? hexToDecimal(trace.value) : 0
-
-    internalTxs.push({
-      parentTxHash,
-      type: trace.type || INTERNAL_TX_TYPES.CALL,
-      from: trace.from || "0x0",
-      to: trace.to || "Contract Creation",
-      value: value.toString(),
-      formattedValue: formatEthValue(weiToEth(decimalToHex(value))),
-      gasUsed: trace.gasUsed ? hexToDecimal(trace.gasUsed) : 0,
-      input: trace.input,
-      output: trace.output,
-      depth,
-      error: trace.error,
-      direction: from === target ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
-    })
-  }
-
-  // Recursively process nested calls
-  if (Array.isArray(trace.calls)) {
-    for (const call of trace.calls) {
-      internalTxs.push(...extractInternalTxsFromTrace(call, parentTxHash, targetAddress, depth + 1))
+    return {
+      transfers: [],
+      metadata: {
+        total: 0,
+        reachedLimit: false,
+        error: error.message,
+      },
     }
   }
-
-  return internalTxs
 }
 
 export async function fetchInternalTransactions(rpcUrl, address) {
@@ -446,7 +437,6 @@ export async function fetchInternalTransactions(rpcUrl, address) {
 
     const txHashesToTrace = new Set(transactions.map((tx) => tx.hash))
 
-    // Find contract calls that might have internal txs
     for (let i = 0; i < blocksToSearch; i++) {
       const blockNumber = latestBlockNumber - i
       const block = await client.getBlock(blockNumber, true)
@@ -495,4 +485,40 @@ export async function fetchInternalTransactions(rpcUrl, address) {
     console.error("Error fetching internal transactions:", error)
     return []
   }
+}
+
+function extractInternalTxsFromTrace(trace, parentTxHash, targetAddress, depth = 0) {
+  const internalTxs = []
+  if (!trace) return internalTxs
+
+  const from = normalizeAddress(trace.from)
+  const to = normalizeAddress(trace.to)
+  const target = normalizeAddress(targetAddress)
+
+  if (depth > 0 && (from === target || to === target)) {
+    const value = trace.value ? hexToDecimal(trace.value) : 0
+
+    internalTxs.push({
+      parentTxHash,
+      type: trace.type || INTERNAL_TX_TYPES.CALL,
+      from: trace.from || "0x0",
+      to: trace.to || "Contract Creation",
+      value: value.toString(),
+      formattedValue: formatEthValue(weiToEth(decimalToHex(value))),
+      gasUsed: trace.gasUsed ? hexToDecimal(trace.gasUsed) : 0,
+      input: trace.input,
+      output: trace.output,
+      depth,
+      error: trace.error,
+      direction: from === target ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
+    })
+  }
+
+  if (Array.isArray(trace.calls)) {
+    for (const call of trace.calls) {
+      internalTxs.push(...extractInternalTxsFromTrace(call, parentTxHash, targetAddress, depth + 1))
+    }
+  }
+
+  return internalTxs
 }

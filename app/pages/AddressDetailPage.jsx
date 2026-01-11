@@ -1,19 +1,18 @@
-import { useEffect, useState, useMemo } from "react";
+import { Bookmark, BookmarkCheck, Copy, Edit2, FileCode, Tag, Wallet, X } from "lucide-react";
+import { fetchAddressByAddress, fetchAddressTransactions } from "../lib/BlockchainApi";
+import TransactionsContent from "../components/TabAddressTransactions";
+import TokenTransfersContent from "../components/TabTokenTransfer"
+import CodeContent from "../components/TabAddressContractCode";
 import { useBlockchain, useRouter } from "../App";
+import Skeleton from "../components/Skeleton";
+import { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
-import Skeleton from "../components/Skeleton";
 import Tabs from "../components/Tabs";
-import CodeContent from "../components/TabAddressContractCode"
-import TransactionsContent from "../components/TabAddressTransactions";
-import { fetchAddressByAddress, fetchAddressTransactions } from "../lib/BlockchainApi";
-import { Bookmark, BookmarkCheck, Copy, Edit2, FileCode, Tag, Wallet, X } from "lucide-react";
 
 export default function AddressDetailPage({ address }) {
   const [addressData, setAddressData] = useState(null);
-  const [transactions, setTransactions] = useState([]);
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
-  const [isLoadingTxs, setIsLoadingTxs] = useState(true);
 
   const { rpcUrl, getContractABI, getAddressLabel, saveAddressLabel, removeAddressLabel, isAddressSaved, saveAddress, unsaveAddress } = useBlockchain();
   const { navigate } = useRouter();
@@ -25,18 +24,6 @@ export default function AddressDetailPage({ address }) {
   const [showLabelInput, setShowLabelInput] = useState(false);
   const [labelInput, setLabelInput] = useState("");
   const isSaved = isAddressSaved(address);
-
-  const loadTransactions = async () => {
-    if (!rpcUrl || !address) return
-    try {
-      const data = await fetchAddressTransactions(rpcUrl, address)
-      setTransactions(data)
-    } catch (error) {
-      console.error("Error fetching transactions:", error)
-    } finally {
-      setIsLoadingTxs(false)
-    }
-  }
 
   useEffect(() => {
     const savedABI = getContractABI(address);
@@ -62,10 +49,6 @@ export default function AddressDetailPage({ address }) {
       }
     };
     loadAddress();
-  }, [rpcUrl, address]);
-
-  useEffect(() => {
-    loadTransactions();
   }, [rpcUrl, address]);
   
   const copyToClipboard = (text, field = null) => {
@@ -191,8 +174,10 @@ export default function AddressDetailPage({ address }) {
   const tabs = [
     { id: "overview", label: "Overview", content: <OverviewContent /> },
     { id: "transactions", label: "Transactions", content: <TransactionsContent address={address} /> },
+    { id: "token-transfers", label: "Token Transfers", content: <TokenTransfersContent address={address} /> },
     ...(addressData?.isContract ? [{ id: "code", label: "Code", content: <CodeContent address={address} addressData={addressData} /> }] : []),
   ];
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
