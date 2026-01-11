@@ -4,12 +4,10 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import Skeleton from "../components/Skeleton";
 import Tabs from "../components/Tabs";
-import ContractInteraction from "../components/ContractInteraction";
-import DecodedTransactionInput from "../components/DecodedTransactionInput";
-import { fetchAddressByAddress, fetchAddressTransactions, fetchERC20Transfers, fetchInternalTransactions } from "../lib/BlockchainApi";
-import { parseABI, extractFunctionSelector, findMatchingFunction } from "../lib/AbiDecoder"
-import { queryClient } from "../hooks/useRpcQuery";
-import { Bookmark, BookmarkCheck, Copy, Edit2, FileCode, RefreshCw, Tag, Wallet, X, Filter, ChevronDown, Download } from "lucide-react";
+import CodeContent from "../components/TabAddressContractCode"
+import TransactionsContent from "../components/TabAddressTransactions";
+import { fetchAddressByAddress, fetchAddressTransactions } from "../lib/BlockchainApi";
+import { Bookmark, BookmarkCheck, Copy, Edit2, FileCode, Tag, Wallet, X } from "lucide-react";
 
 export default function AddressDetailPage({ address }) {
   const [addressData, setAddressData] = useState(null);
@@ -17,25 +15,10 @@ export default function AddressDetailPage({ address }) {
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
   const [isLoadingTxs, setIsLoadingTxs] = useState(true);
 
-  const [methodFilter, setMethodFilter] = useState("all")
-  const [showMethodDropdown, setShowMethodDropdown] = useState(false)
-
-  const {
-    rpcUrl,
-    getContractABI,
-    saveContractABI,
-    removeContractABI,
-    getAddressLabel,
-    saveAddressLabel,
-    removeAddressLabel,
-    isAddressSaved,
-    saveAddress,
-    unsaveAddress,
-  } = useBlockchain();
+  const { rpcUrl, getContractABI, getAddressLabel, saveAddressLabel, removeAddressLabel, isAddressSaved, saveAddress, unsaveAddress } = useBlockchain();
   const { navigate } = useRouter();
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [parsedABI, setParsedABI] = useState(null);  
-  const [abiInput, setAbiInput] = useState("");
   const [copiedField, setCopiedField] = useState(null);
 
   const [label, setLabel] = useState("");
@@ -85,79 +68,6 @@ export default function AddressDetailPage({ address }) {
     loadTransactions();
   }, [rpcUrl, address]);
   
-  const uniqueMethods = useMemo(() => {
-    const methods = new Map()
-
-    transactions.forEach((tx) => {
-      if (!tx.input || tx.input === "0x") {
-        methods.set("transfer", { name: "Transfer (Native)", selector: "transfer" })
-        return
-      }
-
-      const selector = extractFunctionSelector(tx.input)
-      if (!selector) return
-
-      // Intentar obtener el nombre del método desde el ABI del contrato destino
-      const contractABI = tx.to ? getContractABI(tx.to) : null
-      const matchingFunction = contractABI ? findMatchingFunction(contractABI, selector) : null
-
-      if (matchingFunction) {
-        methods.set(selector, { name: matchingFunction.name, selector })
-      } else {
-        methods.set(selector, { name: selector, selector })
-      }
-    })
-
-    return Array.from(methods.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [transactions, getContractABI])
-
-  const filteredTransactions = useMemo(() => {
-    if (methodFilter === "all") return transactions
-
-    return transactions.filter((tx) => {
-      if (methodFilter === "transfer") {
-        return !tx.input || tx.input === "0x"
-      }
-
-      const selector = extractFunctionSelector(tx.input)
-      return selector === methodFilter
-    })
-  }, [transactions, methodFilter])
-
-  const handleExportTransactions = () => {
-    const dataToExport = filteredTransactions.map((tx) => ({
-      hash: tx.hash,
-      from: tx.from,
-      to: tx.to,
-      value: tx.value,
-      input: tx.input,
-      blockNumber: tx.blockNumber,
-      timestamp: tx.timestamp,
-      gasUsed: tx.gasUsed,
-      gasPrice: tx.gasPrice,
-      status: tx.status,
-    }))
-
-    const jsonString = JSON.stringify(dataToExport, null, 2)
-    const blob = new Blob([jsonString], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-
-    const link = document.createElement("a")
-    link.href = url
-    const methodName = methodFilter === "all" ? "all" : getCurrentMethodName().replace(/[^a-zA-Z0-9]/g, "_")
-    link.download = `transactions_${address.slice(0, 8)}_${methodName}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  const handleRefreshTransactions = () => {
-    setIsLoadingTxs(true)
-    queryClient.invalidateQueries({ queryKey: ["rpc", rpcUrl] })
-    loadTransactions()
-  }
-
   const copyToClipboard = (text, field = null) => {
     navigator.clipboard.writeText(text);
     if (field) {
@@ -176,26 +86,6 @@ export default function AddressDetailPage({ address }) {
       saveAddress(address);
     }
   };
-
-  /*
-  const handleParseABI = () => {
-    try {
-      setAbiError("");
-      const abi = parseABI(abiInput);
-      setParsedABI(abi);
-      saveContractABI(address, abi);
-      setShowABIInput(false);
-      setAbiInput("");
-    } catch (err) {
-      setAbiError(err instanceof Error ? err.message : "Failed to parse ABI");
-    }
-  };
-  
-  const handleRemoveABI = () => {
-    removeContractABI(address);
-    setParsedABI(null);
-  };
-  */
 
   const handleSaveLabel = () => {
     if (labelInput.trim()) {
@@ -298,226 +188,11 @@ export default function AddressDetailPage({ address }) {
     </div>
   );
 
-  const TransactionsContent = () => (
-    <div className="card">
-      <div className="card-header w-[100%]">
-        <div className="flex items-center justify-between">
-        <h3 className="card-title text-lg">Transaction History</h3>
-        <div className="flex">
-          <div className="relative">
-            <button
-              onClick={() => setShowMethodDropdown(!showMethodDropdown)}
-              className="btn btn-outline btn-sm flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              <span className="max-w-[150px] truncate">{getCurrentMethodName()}</span>
-              <ChevronDown
-                className={`w-4 h-4 transition-transform ${showMethodDropdown ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {showMethodDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowMethodDropdown(false)} />
-                <div className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
-                  <button
-                    onClick={() => {
-                      setMethodFilter("all")
-                      setShowMethodDropdown(false)
-                    }}
-                    className={`w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors ${
-                      methodFilter === "all"
-                        ? "bg-muted text-foreground font-medium"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    All Methods
-                  </button>
-                  <div className="border-t border-border" />
-                  {uniqueMethods.map((method) => (
-                    <button
-                      key={method.selector}
-                      onClick={() => {
-                        setMethodFilter(method.selector)
-                        setShowMethodDropdown(false)
-                      }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-muted transition-colors ${
-                        methodFilter === method.selector
-                          ? "bg-muted text-foreground font-medium"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      <span className="block truncate">{method.name}</span>
-                      {method.name !== method.selector && (
-                        <span className="text-xs text-muted-foreground/70">{method.selector}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={handleExportTransactions}
-            disabled={filteredTransactions.length === 0}
-            className="btn btn-outline btn-sm ml-4"
-          >
-            <Download className="w-4 h-4 mr-2" /> Export
-          </button>
-
-          <button onClick={handleRefreshTransactions} disabled={isLoadingTxs} className="ml-4 btn btn-outline btn-sm">
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingTxs ? "animate-spin" : ""}`} />
-            {isLoadingTxs ? "Loading" : "Refresh"}
-          </button>
-        </div>
-        </div>
-      </div>
-      <div className="card-content">
-        
-        {isLoadingTxs && (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" /> )}
-          </div>
-        )}
-
-        {!isLoadingTxs && (!filteredTransactions || filteredTransactions.length === 0) && (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">No transactions found</p>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {filteredTransactions.map((tx) => (
-            <div key={tx.hash} className="space-y-3">
-              <div
-                onClick={() =>
-                  navigate("transaction-detail", { hash: tx.hash })}
-                  className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`badge ${
-                          tx.type === "send"
-                            ? "badge-destructive"
-                            : "badge-default"
-                        }`}
-                      >
-                        {tx.type === "send" ? "OUT" : "IN"}
-                      </span>
-                      <code className="text-sm text-muted-foreground truncate">
-                        {tx.hash}
-                      </code>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">From:</span>
-                        <code className="text-sm">
-                          {tx.from.slice(0, 10)}...
-                        </code>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">To:</span>
-                        <code className="text-sm">
-                          {tx.to.slice(0, 10)}...
-                        </code>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-lg font-semibold">{tx.amount}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {tx.timeAgo}
-                    </div>
-                  </div>
-                </div>
-
-                {parsedABI && tx.input && tx.input !== "0x" && (
-                  <div
-                    className="mt-3 pt-3 border-t border-border-500"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DecodedTransactionInput
-                      inputData={tx.input}
-                      abi={parsedABI}
-                      inline
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const CodeContent = () => (
-    <div className="space-y-6">
-      {/* ABI Management */}
-      <ContractInteraction
-        contractAddress={address}
-        onABIParsed={(abi) => setParsedABI(abi.length > 0 ? abi : null)}
-      />
-
-      {/* Bytecode */}
-      <div className="card p-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Contract Bytecode</h3>
-            {addressData?.code && addressData.code !== "0x" && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => copyToClipboard(addressData.code, "bytecode")}
-              >
-                <Copy
-                  className={`h-3 w-3 mr-2 ${
-                    copiedField === "bytecode"
-                      ? "text-[oklch(0.65_0.25_151)]"
-                      : "text-muted-foreground"
-                  }`}
-                />
-                Copy
-              </button>
-            )}
-          </div>
-          {addressData?.code && addressData.code !== "0x"
-            ? (
-              <div className="bg-muted/50 rounded-md p-4 border border-border max-h-64 overflow-auto">
-                <code className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
-                  {addressData.code}
-                </code>
-              </div>
-            )
-            : (
-              <p className="text-muted-foreground text-sm">
-                No bytecode available
-              </p>
-            )}
-        </div>
-      </div>
-    </div>
-  );
-
   const tabs = [
     { id: "overview", label: "Overview", content: <OverviewContent /> },
-    ...(addressData?.isContract
-      ? [{ id: "code", label: "Code", content: <CodeContent /> }]
-      : []),
-    {
-      id: "transactions",
-      label: "Transactions",
-      content: <TransactionsContent />,
-    },
+    { id: "transactions", label: "Transactions", content: <TransactionsContent address={address} /> },
+    ...(addressData?.isContract ? [{ id: "code", label: "Code", content: <CodeContent address={address} addressData={addressData} /> }] : []),
   ];
-
-  const getCurrentMethodName = () => {
-    if (methodFilter === "all") return "All Methods"
-    const method = uniqueMethods.find((m) => m.selector === methodFilter)
-    return method ? method.name : methodFilter
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -582,7 +257,7 @@ export default function AddressDetailPage({ address }) {
           )}
 
           {showLabelInput && (
-              <div className="mb-6 flex items-center gap-2">
+            <div className="mb-6 flex items-center gap-2">
               <input
                 type="text"
                 value={labelInput}
@@ -596,11 +271,11 @@ export default function AddressDetailPage({ address }) {
                 Save
               </button>
               <button
+                className="btn btn-outline"
                 onClick={() => {
                   setShowLabelInput(false);
                   setLabelInput("");
                 }}
-                  className="btn btn-outline"
               >
                 Cancel
               </button>

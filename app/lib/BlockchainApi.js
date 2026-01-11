@@ -21,7 +21,7 @@ import { BLOCKCHAIN_CONFIG, ERC20_TOPICS, INTERNAL_TX_TYPES, TX_DIRECTION } from
 
 // Factory
 function createRPCClient(rpcUrl) {
-  return new createCachedRPCClient(rpcUrl)
+  return createCachedRPCClient(rpcUrl)
 }
 
 // Parsers
@@ -281,15 +281,22 @@ export async function fetchAddressByAddress(rpcUrl, address) {
   }
 }
 
-export async function fetchAddressTransactions(rpcUrl, address) {
+export async function fetchAddressTransactions(rpcUrl, address, options = {}) {
   const client = createRPCClient(rpcUrl)
+  const {
+    limit = BLOCKCHAIN_CONFIG.DEFAULT_TX_LOAD_LIMIT,
+    maxBlocks = BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS,
+  } = options
 
   try {
     const latestBlockNumber = await getLatestBlockNumber(client)
-    const blocksToSearch = Math.min(BLOCKCHAIN_CONFIG.MAX_BLOCKS_TO_SEARCH_FOR_ADDRESS, latestBlockNumber)
+    const blocksToSearch = Math.min(maxBlocks, latestBlockNumber)
     const transactions = []
+    let blocksSearched = 0
+    let reachedLimit = false
 
-    for (let i = 0; i < blocksToSearch && transactions.length < BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST; i++) {
+    for (let i = 0; i < blocksToSearch; i++) {
+      blocksSearched++
       const blockNumber = latestBlockNumber - i
       const block = await client.getBlock(blockNumber, true)
 
@@ -307,11 +314,24 @@ export async function fetchAddressTransactions(rpcUrl, address) {
         transaction.type = determineTransactionDirection(tx, address)
         transactions.push(transaction)
 
-        if (transactions.length >= BLOCKCHAIN_CONFIG.MAX_TRANSACTIONS_PER_REQUEST) break
+        if (transactions.length >= limit) {
+          reachedLimit = true
+          break
+        }
       }
+
+      if (reachedLimit) break
     }
 
-    return transactions
+    return {
+      transactions,
+      metadata: {
+        total: transactions.length,
+        blocksSearched,
+        reachedLimit,
+        latestBlockNumber,
+      },
+    }
   } catch (error) {
     console.error("Error fetching address transactions:", error)
     throw error
