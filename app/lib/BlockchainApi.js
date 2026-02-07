@@ -8,7 +8,6 @@ import {
   formatGweiValue,
   formatGasValue,
   formatBlockSize,
-  formatTokenValue,
   getTimeAgo,
   formatTimestamp,
   isValidTransactionInput,
@@ -351,6 +350,8 @@ export async function fetchERC20Transfers(rpcUrl, address, options = {}) {
     const addressLower = address.toLowerCase()
     let reachedLimit = false
 
+    const tokenDecimalsCache = new Map()
+
     const batchSize = 10
     for (let i = 0; i < transactions.length && !reachedLimit; i += batchSize) {
       const batch = transactions.slice(i, i + batchSize)
@@ -379,16 +380,46 @@ export async function fetchERC20Transfers(rpcUrl, address, options = {}) {
           }
 
           const isOutgoing = from === addressLower
+          const tokenAddress = log.address
+
+          let decimals = 18 // default
+          const tokenLower = tokenAddress.toLowerCase()
+
+          if (tokenDecimalsCache.has(tokenLower)) {
+            decimals = tokenDecimalsCache.get(tokenLower)
+          } else {
+            try {
+              // Llamar decimals() del contrato ERC20: 0x313ce567
+              const decimalsResult = await client.call(
+                {
+                  to: tokenAddress,
+                  data: "0x313ce567",
+                },
+                "latest",
+              )
+
+              if (decimalsResult && decimalsResult !== "0x") {
+                decimals = hexToDecimal(decimalsResult)
+              }
+              tokenDecimalsCache.set(tokenLower, decimals)
+            } catch {
+              // Si falla, usar 18 por defecto
+              tokenDecimalsCache.set(tokenLower, 18)
+            }
+          }
+
+          const formattedValue = formatTokenValueWithDecimals(value, decimals)
 
           transfers.push({
             hash: tx.hash,
             logIndex: hexToDecimal(log.logIndex),
             blockNumber: tx.blockNumber,
-            tokenAddress: log.address,
+            tokenAddress,
             from,
             to,
             value,
-            formattedValue: formatTokenValue(value),
+            formattedValue,
+            decimals, // Incluir decimales en el resultado
             type: isOutgoing ? TX_DIRECTION.SEND : TX_DIRECTION.RECEIVE,
             timestamp: tx.timestamp,
             timeAgo: tx.timeAgo,
@@ -521,4 +552,24 @@ function extractInternalTxsFromTrace(trace, parentTxHash, targetAddress, depth =
   }
 
   return internalTxs
+}
+
+function formatTokenValueWithDecimals(value, decimals) {
+  try {
+    const valueBigInt = BigInt(value)
+    const divisor = BigInt(10 ** decimals)
+    const integerPart = valueBigInt / divisor
+    const fractionalPart = valueBigInt % divisor
+
+    const fractionalStr = fractionalPart.toString().padStart(decimals, "0")
+    // Mostrar hasta 6 decimales significativos
+    const trimmedFractional = fractionalStr.slice(0, 6).replace(/0+$/, "")
+
+    if (trimmedFractional) {
+      return `${integerPart.toLocaleString()}.${trimmedFractional}`
+    }
+    return integerPart.toLocaleString()
+  } catch {
+    return value
+  }
 }
