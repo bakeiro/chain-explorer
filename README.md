@@ -17,7 +17,13 @@
 </p>
 <br>
 
-<img width="375" height="200" alt="sponsored_by_2" src="https://github.com/user-attachments/assets/377dc65f-6f0f-450f-98f7-340dff03214b" />
+<p align="center">
+
+  <a href="https://poolmaster.io">
+    <img width="375" height="200" alt="sponsored_by_2" src="https://github.com/user-attachments/assets/377dc65f-6f0f-450f-98f7-340dff03214b" />
+  </a>
+</p>
+
 
 
 ### Fast, simple, and functional blockchain explorer
