@@ -17,6 +17,15 @@
 </p>
 <br>
 
+<p align="center">
+
+  <a href="https://poolmaster.io">
+    <img width="375" height="200" alt="sponsored_by_2" src="https://github.com/user-attachments/assets/377dc65f-6f0f-450f-98f7-340dff03214b" />
+  </a>
+</p>
+
+
+
 ### Fast, simple, and functional blockchain explorer
 With `chain-explorer`, you can inspect any blockchain. This is especially useful for debugging/inspecting blockchain hard forks and local development blockchains (such as Hardhat and Ganache).  
 With this super simple and fast tool, you can view blocks, transactions, addresses, contracts, transaction events, and other useful information, so you don't have to use `console.log()` all the time.
